@@ -37,9 +37,10 @@
   bind ? import "${fetch "gen-bind"}/lib" { inherit prelude; },
   ...
 }:
+# `prelude` above is the builder for the sibling libs (scope/graph/rebuild/bind each take it);
+# ./lib itself takes only the 5 constructed siblings, not a direct prelude.
 import ./lib {
   inherit
-    prelude
     scope
     graph
     rebuild

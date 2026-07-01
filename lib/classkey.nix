@@ -8,7 +8,9 @@
 # (reads no per-scope-varying path). No static key is provably complete in general, so any consumer
 # reusing on classKey MUST back it with a BYTE-IDENTITY GATE (drvPath equality of the materialized
 # output) as the total correctness oracle. Key narrows; gate decides. (Cache + gate = deferred, §12.)
-{ prelude }:
+#
+# Dep-free -> bare value (convention §8): the digest is 100% builtins, so this advertises no
+# dependency contract (previously took an unused `{ prelude }`).
 let
   # Deep-sanitize before digesting: replace every function with a stable sentinel, keep all other
   # structure. builtins.toJSON THROWS on a bare function; a raw digest would either crash or (via a

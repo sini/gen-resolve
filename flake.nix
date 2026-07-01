@@ -1,9 +1,11 @@
 {
   description = "gen-resolve — demand-driven higher-order RAG evaluator over algebraic scope graphs (Knuth 1968 attribute schedule + Vogt 1989 HOAG)";
 
-  # Class B: pure gen-prelude base + 5 pure gen siblings. No nixpkgs input — the
-  # library (./lib) is nixpkgs-lib-free (checked by ci/tests/purity.nix). nixpkgs is
-  # pulled ONLY in ci/ (the nix-unit harness + the evalModules-equivalence oracle).
+  # Class B: 5 pure gen siblings. No nixpkgs input — the library (./lib) is nixpkgs-lib-free
+  # (checked by ci/tests/purity.nix). nixpkgs is pulled ONLY in ci/ (the nix-unit harness + the
+  # evalModules-equivalence oracle). gen-prelude is declared for the standalone ./default.nix
+  # shim (which constructs the sibling libs, each of which takes prelude) — the .lib output below
+  # does not take a direct prelude (it consumes the already-constructed sibling .lib values).
   inputs = {
     gen-prelude.url = "github:sini/gen-prelude";
     gen-scope.url = "github:sini/gen-scope";
@@ -15,7 +17,6 @@
 
   outputs =
     {
-      gen-prelude,
       gen-scope,
       gen-graph,
       gen-rebuild,
@@ -25,7 +26,6 @@
     }:
     {
       lib = import ./lib {
-        prelude = gen-prelude.lib;
         scope = gen-scope.lib;
         graph = gen-graph.lib;
         rebuild = gen-rebuild.lib;

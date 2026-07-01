@@ -33,6 +33,13 @@ let
         ;
       stratum = stratumOf kind stratum;
     };
+
+  # foldLayersTraced strategies a cascade may use — the associative, non-semilattice merges D6 permits.
+  cascadeStrategies = [
+    "replace"
+    "append"
+    "recursive"
+  ];
 in
 {
   # Primitive: compute + readsAttrs both explicit (compute is opaque -> nothing to infer).
@@ -64,18 +71,22 @@ in
       readsAttrs = [ ];
     };
 
-  # Neron cascade: fold layered strata in scope-graph edge order (self->imports->parent), LAST wins.
-  # combine is shadow (D6, associative-only); commutative/idempotent combines are a correctness regression.
+  # Neron 2015 cascade: fold layered strata along the neron scope contract (self -> imports
+  # -> parent), most-specific LAST. `combine` selects the per-field gen-algebra fold strategy
+  # (D13, foldLayersTraced) applied uniformly to every field: "replace" (shadow / last-wins,
+  # the default) | "append" (list concat) | "recursive" (deep //) — exactly the associative,
+  # non-semilattice merges D6 permits. A commutative/idempotent "semilattice-set" is rejected
+  # at registration. (foldLayersTraced's `strategies` is the seam — the param is real, not inert.)
   cascade =
     {
       name,
       channel,
       strata ? { },
-      combine ? scope.shadow,
+      combine ? "replace",
     }:
     assert
-      (builtins.isFunction combine)
-      || throw "gen-resolve.cascade: combine must be a function (shadow-cascade); 'semilattice-set' is reserved and rejected (design §8 D6)";
+      (builtins.elem combine cascadeStrategies)
+      || throw "gen-resolve.cascade: combine must be a foldLayersTraced strategy (replace|append|recursive) — associative-only (D6); the reserved commutative 'semilattice-set' is rejected";
     mk {
       inherit name;
       kind = "cascade";
@@ -83,33 +94,56 @@ in
       compute =
         self: id:
         let
-          # collect this channel's per-node layers along the neron contract, least-specific last
+          # collect this channel's per-node layers along the neron contract (self-first)
           layers = scope.collectionAttr {
             traverse = "neron";
             extract = self': id': (strata.${id'} or (self'.node id').decls.${channel} or null);
-            combine = a: b: a ++ b; # accumulate layer LIST; precedence applied by foldLayersTraced
+            combine = a: b: a ++ b; # collectionAttr accumulator: build the layer LIST
           } self id;
-          n = builtins.length layers;
+          # neron gives self-first (most-specific first); foldLayersTraced wants least-specific first
+          ordered = builtins.foldl' (acc: x: [ x ] ++ acc) [ ] layers;
+          # apply the chosen strategy to EVERY field of the merged record (this is where combine bites)
+          allKeys = builtins.attrNames (builtins.foldl' (a: l: a // l) { } ordered);
+          strategies = builtins.listToAttrs (
+            map (k: {
+              name = k;
+              value = combine;
+            }) allKeys
+          );
         in
         (algebra.record.foldLayersTraced {
-          # neron gives self-first; foldLayersTraced wants least-specific-first -> reverse
-          layers = builtins.foldl' (acc: x: [ x ] ++ acc) [ ] layers;
-          layerNames = builtins.genList (i: "layer-${toString i}") n;
+          layers = ordered;
+          layerNames = builtins.genList (i: "layer-${toString i}") (builtins.length ordered);
+          inherit strategies;
         }).value;
     };
 
-  # Hedin 2000 reference attribute: query across includes (forward) / neededBy (reverse).
+  # Reference attribute across scope edges. target selects the direction:
+  #   "includes" (forward) — Hedin 2000 reference attribute: nearest binding across imports.
+  #   "neededBy"  (reverse) — Hedin & Magnusson 2003 inter-type declarations: gather over the
+  #                nodes that import this one (delegated to gen-scope.queryReverse). Both read
+  #                the import graph, hence readsAttrs = ["imports"].
   reference =
     {
       name,
       select,
       target ? "includes",
     }:
+    assert
+      (builtins.elem target [
+        "includes"
+        "neededBy"
+      ])
+      || throw "gen-resolve.reference: target must be \"includes\" (forward) or \"neededBy\" (reverse)";
     mk {
       inherit name;
       kind = "reference";
-      readsAttrs = [ "imports" ]; # scope.query reads import edges
-      compute = scope.query { dataFilter = select; };
+      readsAttrs = [ "imports" ];
+      compute =
+        if target == "neededBy" then
+          scope.queryReverse { dataFilter = select; } # reverse gather over importers
+        else
+          scope.query { dataFilter = select; }; # forward nearest-binding
     };
 
   inherit stratumOf;

@@ -1,7 +1,6 @@
 {
   inputs = {
     gen.url = "github:sini/gen";
-    gen-prelude.url = "github:sini/gen-prelude";
     gen-scope.url = "github:sini/gen-scope";
     gen-graph.url = "github:sini/gen-graph";
     gen-rebuild.url = "github:sini/gen-rebuild";
@@ -16,7 +15,6 @@
   outputs =
     inputs@{
       gen,
-      gen-prelude,
       gen-scope,
       gen-graph,
       gen-rebuild,
@@ -26,7 +24,6 @@
     }:
     let
       genResolve = import ../lib {
-        prelude = import "${gen-prelude}/lib";
         scope = gen-scope.lib;
         graph = gen-graph.lib;
         rebuild = gen-rebuild.lib;

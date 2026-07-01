@@ -1,4 +1,5 @@
-# gen-resolve public API. Class B (gen-prelude base + 5 gen siblings).
+# gen-resolve public API. Class B — 5 gen siblings (scope/graph/rebuild/algebra/bind). gen-prelude
+# is only a TRANSITIVE dep (each sibling carries its own); the .lib surface takes no direct prelude.
 # Function <=> deps (convention §8): this file has deps, so it is a function of named VALUES.
 #
 # gen-resolve is the CONDUCTOR — it owns ONLY the static attribute-dependency schedule
@@ -7,7 +8,6 @@
 # dirtiness oracle, algebra strata fold, bind terminal). Runtime order is demand — Nix
 # laziness inside scope.eval's lib.fix (Mokhov 2018 §4.1); gen-resolve never re-orders thunks.
 {
-  prelude,
   scope,
   graph,
   rebuild,
@@ -21,7 +21,7 @@ let
   contract = import ./contract.nix; # bare value (dep-free)
   materialize = import ./materialize.nix { inherit bind; };
   override = import ./override.nix { inherit scope graph rebuild; };
-  classkey = import ./classkey.nix { inherit prelude; };
+  classkey = import ./classkey.nix; # bare value (dep-free)
 in
 # curated inherit (convention §9): hide internal helpers, group the surface
 {
