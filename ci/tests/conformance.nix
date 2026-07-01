@@ -2,7 +2,7 @@
 #   1. demand-order == from-scratch toposort            Knuth 1968 (attribute schedule)
 #   2. well-definedness gate throws                      Knuth 1968 circularity test / Vogt 1989
 #   3. two-stratum partition assert throws               van Antwerpen 2016 §4.3
-#   4. NTA grammar-growth + memoization                  Vogt 1989 §2 (higher-order AG)
+#   4. NTA grammar-growth (a typed node appears mid-fold)  Vogt 1989 §2 (higher-order AG)
 #   5. override byte-identical to pre-applied resolve     Reps–Teitelbaum–Demers 1983
 #
 # DAGs are derived from integer seeds (no Math.random): a_i reads a_j (j<i) iff (seed+7i+3j) mod 3 != 0,
@@ -216,10 +216,14 @@ let
         in
         if builtins.length parts > 1 then builtins.head parts else null;
   };
-  ntaGrewAndMemoized =
+  # NOTE: memoization is a gen-scope internal (the `get` cache) and is NOT observable through
+  # pure-value equality — `project x == project x` is a tautology that proves nothing, so it is
+  # deliberately omitted. This exercises grammar GROWTH: a real, typed node appears mid-fold and
+  # its attribute resolves through the demand fixpoint.
+  ntaGrew =
     (ntaCtx.eval.allNodes ? "p-child") # grammar grew mid-fold (Vogt 1989 §2)
-    && (project ntaCtx "p-child" "val" == 6) # the spawned node's attribute resolves
-    && (project ntaCtx "p-child" "val" == project ntaCtx "p-child" "val"); # stable across repeated demand (memo)
+    && ((ntaCtx.eval.node "p-child").type == "spawned") # the spawned node is a real, typed grammar node
+    && (project ntaCtx "p-child" "val" == 6); # its attribute resolves through the fold
 in
 {
   flake.tests.conformance = {
@@ -238,9 +242,9 @@ in
       expr = stratumAssertThrows;
       expected = true;
     };
-    # Vogt 1989 §2 — higher-order NTA grows the node grammar mid-fold; child attrs memoize
+    # Vogt 1989 §2 — higher-order NTA grows the node grammar mid-fold (a real typed node appears)
     test-nta-grammar-growth = {
-      expr = ntaGrewAndMemoized;
+      expr = ntaGrew;
       expected = true;
     };
     # Reps–Teitelbaum–Demers 1983 — incremental override == from-scratch resolve

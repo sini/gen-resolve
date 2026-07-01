@@ -103,7 +103,8 @@ let
         8081
         8082
       ];
-    child-memoizes = project ctx "cluster/svc-1" "port" == project ctx "cluster/svc-1" "port";
+    # each spawned node is a real, typed grammar node reachable through the fold
+    spawned-nodes-typed = builtins.all (i: (ctx.eval.node i).type == "service") serviceIds;
   };
 in
 {

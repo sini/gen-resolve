@@ -80,10 +80,20 @@ in
       ];
       expected = true;
     };
-    # DP4: builtCtx lazy — cold resolve never forces gen-rebuild's cycle-check
+    # DP4: builtCtx lazy — a resolve with a CYCLIC declaredEdges would make gen-rebuild.build's
+    # node-cycle check throw IF builtCtx were forced; cold resolve + project must still succeed.
     test-cold-ignores-builtctx = {
-      expr = ctx ? eval;
-      expected = true;
+      expr =
+        let
+          cyclic = resolve {
+            inherit roots;
+            equations = eqs;
+            parseParent = id: roots.${id}.parent or null;
+            declaredEdges = id: if id == "child" then [ "parent" ] else [ "child" ];
+          };
+        in
+        cyclic.eval.get "child" "self-v";
+      expected = 1;
     };
   };
 }

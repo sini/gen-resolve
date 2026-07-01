@@ -79,18 +79,35 @@ let
       select = n: n.decls.role or null;
       target = "includes";
     };
+    # Hedin & Magnusson 2003 reverse reference (neededBy): db1 gathers the class of every host
+    # that imports it (delegated to gen-scope.queryReverse).
+    dependents = reference {
+      name = "dependents";
+      select = n: n.decls.class or null;
+      target = "neededBy";
+    };
   };
+  # declaredEdges MUST over-declare the cross-node reads (soundness (c)): web1 reads db1 via the
+  # includes edge, so declare web1 -> db1. This is what makes override sound across nodes.
+  declaredEdges = id: if id == "web1" then [ "db1" ] else [ ];
   ctx = resolve {
-    inherit roots;
+    inherit roots declaredEdges;
     equations = eqs;
     parseParent = _: null;
   };
 
-  # override web2's class web -> db: only web2 (its own cone) re-derives
+  # override web2's class web -> db: web2 has no consumers, only web2 re-derives
   ctx' = override ctx {
     id = "web2";
     newDecls = {
       class = "db";
+    };
+  };
+  # override db1's role: web1 DECLARES a read of db1, so web1's cone re-derives (the sound case)
+  ctxRole = override ctx {
+    id = "db1";
+    newDecls = {
+      role = "primary";
     };
   };
 
@@ -107,12 +124,16 @@ let
     aspect-identity-key = nginxIdentity == "web/nginx";
     # cross-host read: web1 sees db1's `role` across the includes edge (Hedin reference)
     cross-host-includes-read = project ctx "web1" "included-role" == "database";
+    # reverse read (neededBy): db1 gathers the classes of the hosts that import it
+    neededBy-reverse-read = project ctx "db1" "dependents" == [ "web" ];
     # override re-derives the target's cone...
     override-reclasses-target = project ctx' "web2" "resolved-aspects" == flatKeys "db";
     override-collapses-to-db = classKey ctx' "web2" == classKey ctx' "db1";
     # ...and leaves every non-cone host's prior value byte-identical
     override-keeps-noncone =
       project ctx' "web1" "resolved-aspects" == project ctx "web1" "resolved-aspects";
+    # a DECLARED cross-node read re-derives soundly: override db1.role -> web1 re-reads it
+    override-cone-rederives-consumer = project ctxRole "web1" "included-role" == "primary";
   };
 in
 {

@@ -58,6 +58,19 @@ in
         }).stratum;
       expected = "resolution";
     };
+    # M1: an explicit stratum is honored for ANY kind, not just synthesized — den's
+    # `enriched-context` is `circular` but lives in the STRUCTURAL stratum (den-hoag).
+    test-attr-circular-explicit-structural = {
+      expr =
+        (attr {
+          name = "enriched-context";
+          kind = "circular";
+          compute = self: id: { };
+          readsAttrs = [ "enriched-context" ];
+          stratum = "structural";
+        }).stratum;
+      expected = "structural";
+    };
     # Vogt 1989 NTA — nta auto-populates readsAttrs (structural, reads own decls only)
     test-nta = {
       expr =

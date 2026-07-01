@@ -72,5 +72,31 @@ in
         })).success;
       expected = true;
     };
+    # MIXED SCC (one circular + one non-circular member) -> Vogt gate throws. Exercises the
+    # `all (isCircular) scc` quantifier that all-synth / all-circular alone never hit.
+    test-mixed-scc-throws = {
+      expr =
+        (builtins.tryEval (build {
+          a = eq "circular" [ "b" ];
+          b = eq "synthesized" [ "a" ];
+        })).success;
+      expected = false;
+    };
+    # den `enriched-context` shape (M1): a `circular` attr carrying an EXPLICIT `structural`
+    # stratum, read by structural graph-builders. stratumOf honors explicit for any kind, so the
+    # structural cone reaches no resolution attr and the self-referential SCC is all-circular ->
+    # the grammar builds. (A future "conform stratumOf to synthesized-only" refactor would break this.)
+    test-circular-structural-den-shape = {
+      expr =
+        (builtins.tryEval (build {
+          imports = (eq "synthesized" [ "enriched-context" ]) // {
+            stratum = "structural";
+          };
+          enriched-context = (eq "circular" [ "enriched-context" ]) // {
+            stratum = "structural";
+          };
+        })).success;
+      expected = true;
+    };
   };
 }
