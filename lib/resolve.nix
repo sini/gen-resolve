@@ -41,7 +41,7 @@ let
       hashOf = v: builtins.hashString "sha256" (builtins.toJSON v); # function-bearing -> gen-rebuild nulls -> always-dirty
     };
 in
-rec {
+{
   inherit mkBuiltCtx trackedAttrs snapshot;
 
   resolve =

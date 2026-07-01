@@ -29,9 +29,9 @@ inside `gen-scope.eval`'s `lib.fix` (Mokhov 2018 §4.1); gen-resolve never re-or
 | demand fixpoint (runtime order = Nix laziness) | `gen-scope` `eval`/`evalWarm` | Mokhov 2018 §4.1 |
 | attribute-dependency topology / condensation / reverse cone | `gen-graph` `condensation`/`reachableFrom`/`dependentsOf`/`coneRank` | Knuth 1968 |
 | dirtiness oracle (deferred cross-invocation layer) | `gen-rebuild` `build`/`affectedSet` | Mokhov 2018 rebuilder / RTD 1983 |
-| strata fold (Neron D>I>P, LAST wins) | `gen-algebra` `record.foldLayersTraced` | Neron et al. 2015 §2 |
+| strata fold (Neron D>I>P; `cascade.combine` = the per-field strategy) | `gen-algebra` `record.foldLayersTraced` | Neron et al. 2015 §2 |
 | terminal module binding (defunctionalized arg injection) | `gen-bind` `wrapAll` | Reynolds 1972 |
-| pure utility base | `gen-prelude` | — |
+| pure utility base (**transitive only** — each sibling carries its own; the `.lib` takes no direct prelude) | `gen-prelude` | — |
 
 `REFERENCE.md` (in the design-spec repo, `gen-specs/gen-resolve/REFERENCE.md`) maps each op to
 the exact lemma it discharges.
@@ -73,15 +73,20 @@ Runtime order is never scheduled by gen-resolve — it is Nix demand inside the 
 ## `override` — intra-eval incremental
 
 `override`/`warmResolve` mark the **topological reverse cone** (`gen-graph.dependentsOf`) dirty
-and re-fold via `gen-scope.evalWarm`, serving the clean complement from the cold prior. This is
-the RTD 1983 AFFECTED set as the reverse cone — **not** exact-AFFECTED hash-cutoff. That choice is
+and re-fold via `gen-scope.evalWarm`, serving the clean complement from the cold prior. The reverse
+cone is a **sound over-approximation** of the RTD 1983 AFFECTED set (RTD's AFFECTED is the cone
+*minus* the unchanged-value nodes) — **not** the exact-AFFECTED hash-cutoff. That choice is
 deliberate and fleet-grounded: exact-AFFECTED's detection pass would force (hash) the dominant
 per-host spine and `evalWarm` would force it again — a literal 2× of the dominant cost intra-eval
 (the hola E3c cross-scope-sharing NO-GO shape). The hash-cutoff refinement pays off only
 cross-invocation, where it moves to the deferred layer. **Edge-moves (topology changes) error in
-v1** (D14). `builtCtx` (the `gen-rebuild` oracle) is retained as a LAZY field — the deferred
-cross-eval hook — and is never forced by v1's `resolve`/`materialize`/`override`, so a cyclic
-node graph still resolves.
+v1** (D14); editing a non-root node also throws. `builtCtx` (the `gen-rebuild` oracle) is retained
+as a LAZY field — the deferred cross-eval hook — and is never forced by v1's
+`resolve`/`materialize`/`override`, so a cyclic node graph still resolves.
+
+> **Soundness (c).** Warm-serving is sound only if `declaredEdges` **over-declares** every cross-node
+> read (consumer→producer). Under-declare, and a consumer outside the declared cone is served its
+> *stale* prior value on override — `ci/tests/override-cross-node.nix` witnesses both branches.
 
 > **`warmResolve` shape.** The design spec lists `warmResolve ctx { changedIds }`, but a *pure*
 > batch override cannot carry the data-changes without their payload — v1 therefore takes

@@ -15,6 +15,5 @@ in
   inherit terminalBind;
   materialize = ctx: id: ctx.eval.get id "output-modules"; # forces the ONLY gen-bind site
   materializeAll =
-    ctx: className:
-    builtins.mapAttrs (id: _: ctx.eval.get id "output-modules") (ctx.eval.nodesOfType className);
+    ctx: type: builtins.mapAttrs (id: _: ctx.eval.get id "output-modules") (ctx.eval.nodesOfType type);
 }

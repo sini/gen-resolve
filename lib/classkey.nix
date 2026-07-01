@@ -16,6 +16,9 @@ let
   # structure. builtins.toJSON THROWS on a bare function; a raw digest would either crash or (via a
   # blanket fallback) false-collide two distinct function-bearing values. Recursing preserves every
   # non-function distinction, so the sentinel only conflates the un-digestible leaves themselves.
+  # CAVEAT: assumes a FINITE value (the intended resolved-aspects key data). A self-referential
+  # attrset (`let x = { a = x; }; in x`) would diverge, as would toJSON itself; the byte-identity gate
+  # (which the key must be backed by) is the real oracle for such values — the key only narrows.
   sentinel = "<gen-resolve/classKey:function>";
   sanitize =
     v:

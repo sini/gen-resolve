@@ -2,7 +2,10 @@
 # (gen-graph.dependentsOf) — NOT gen-rebuild.affectedSet. Grounded in the hola fleet analysis (DP6):
 # exact-AFFECTED hash-detection doubles the dominant per-host spine cost intra-eval and only pays off
 # cross-eval (deferred). gen-scope.evalWarm is the sole recompute engine.
-# THEORY: RTD 1983 §4.3 (AFFECTED = the reverse cone; the hash-cutoff refinement is the deferred layer);
+# THEORY: RTD 1983 §4.3 — the topological reverse cone is a SOUND OVER-APPROXIMATION of AFFECTED
+#         (RTD's AFFECTED is the cone MINUS the unchanged-value nodes; the §4.1 unchanged-value
+#         cutoff that yields exact/optimal AFFECTED is the deferred cross-eval layer, NOT v1 — so
+#         "reverse cone" != "AFFECTED", it is a superset that is always correct to recompute);
 #         Acar 2002 §7 (reverse-topo splice); Mokhov 2018 §4.1 (laziness scopes the demanded part free).
 {
   scope,
@@ -64,6 +67,11 @@ let
   # Core: splice a set of data-change edits, mark the union of their reverse cones dirty, one evalWarm.
   spliceAndWarm =
     ctx: edits: # edits :: { <id> = newDecls; }
+    assert
+      (builtins.all (id: builtins.hasAttr id ctx.roots) (builtins.attrNames edits))
+      || throw "gen-resolve.override: edit target(s) must be root nodes — ${
+        builtins.toJSON (builtins.filter (id: !(builtins.hasAttr id ctx.roots)) (builtins.attrNames edits))
+      } not in roots (NTA-spawned nodes are not editable; edit the spawning root).";
     let
       ids = builtins.attrNames edits;
       roots' = builtins.foldl' (
@@ -116,7 +124,7 @@ let
     };
   # schedule + equations + parseParent + declaredEdges + settings carried unchanged (D12)
 in
-rec {
+{
   override =
     ctx:
     { id, newDecls }:

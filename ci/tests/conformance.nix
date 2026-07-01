@@ -3,7 +3,8 @@
 #   2. well-definedness gate throws                      Knuth 1968 circularity test / Vogt 1989
 #   3. two-stratum partition assert throws               van Antwerpen 2016 §4.3
 #   4. NTA grammar-growth (a typed node appears mid-fold)  Vogt 1989 §2 (higher-order AG)
-#   5. override byte-identical to pre-applied resolve     Reps–Teitelbaum–Demers 1983
+#   5. override byte-identical to pre-applied resolve     RTD 1983 SOUNDNESS (not minimality: the
+#                                                          O(|AFFECTED|) optimality is deferred, v1 recomputes the cone)
 #
 # DAGs are derived from integer seeds (no Math.random): a_i reads a_j (j<i) iff (seed+7i+3j) mod 3 != 0,
 # so every generated attribute grammar is acyclic by construction and varies with the seed.
@@ -247,7 +248,8 @@ in
       expr = ntaGrew;
       expected = true;
     };
-    # Reps–Teitelbaum–Demers 1983 — incremental override == from-scratch resolve
+    # RTD 1983 SOUNDNESS — incremental override == from-scratch resolve (byte-identical). This tests
+    # correctness, NOT RTD's O(|AFFECTED|) minimality (deferred; v1 recomputes the whole reverse cone).
     test-override-byte-identical = {
       expr = overrideByteIdentical;
       expected = true;

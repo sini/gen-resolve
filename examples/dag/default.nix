@@ -4,7 +4,6 @@
 {
   genResolve,
   genScope,
-  lib,
 }:
 let
   inherit (genResolve)
