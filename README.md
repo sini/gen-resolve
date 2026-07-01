@@ -41,18 +41,24 @@ the exact lemma it discharges.
 Two framing guardrails, both grounded in the measured hola fleet analysis
 (`~/Documents/papers/hola-architecture/`) — read them before inferring a performance story:
 
-1. **The value is structure + the fleet class-sharing KEY — NOT per-host eval speed.** The
-   cortex profile shows a per-host evaluation is ~94% intrinsic derivation construction / ~6%
-   module-system machinery, and it is single-thread-bound. No amount of resolution cleverness
-   moves the 94%; do not read a per-host speedup into gen-resolve. What it buys is *correctness*
-   (HOAG/RAG well-definedness, the two-stratum guarantee) and a stable *class KEY* that lets a
-   fleet collapse identical host-classes.
+1. **v1's realized value is structure + a stable class KEY — NOT per-host eval speed, and NOT
+   (yet) fleet sharing.** The cortex profile shows a per-host evaluation is ~94% intrinsic
+   derivation construction / ~6% module-system machinery, single-thread-bound. No resolution
+   cleverness moves the 94%; do not read a per-host speedup into gen-resolve. What v1 delivers
+   TODAY is *correctness* (HOAG/RAG well-definedness, the two-stratum guarantee) and a stable
+   *class KEY*. The fleet class-sharing *payoff* that KEY is built for (collapsing identical
+   host-classes across a fleet) is a **measured PoC direction in hola, NOT shipped den
+   infrastructure** — the hola Plane-2a/2b work is on unmerged feature branches / gist PoCs
+   (den `feat/s1-per-sid-hostconfig`, `feat/s2-pipe-reads`, as of 2026-07-01). So the DESIGN is
+   grounded in the hola *analysis*; the fleet *lever* is a trajectory the key enables, not a
+   realized capability. Don't cite gen-resolve as *delivering* fleet sharing.
 
 1. **Three sharing layers — know which one this is.**
 
    - **(a) intra-eval attribute memo** — `gen-scope`'s `lib.fix`; free, already happening.
    - **(b) cross-invocation resolved-value reuse** — keyed on `classKey`; the cache + byte-identity
-     gate are DEFERRED (the cross-invocation layer, hola Plane-2b). v1 ships the key only.
+     gate are DEFERRED (the cross-invocation layer, hola Plane-2b — still PoC/unmerged in den).
+     v1 ships the key only.
    - **(c) `evalModules` config-snapshot cross-scope sharing** — **hola owns this** (vendor-and-own,
      byte-identical). gen-resolve sits **upstream of `evalModules`**: it produces per-node module
      *lists* (`terminalBind`) and shares at the *resolution* layer, not the config-snapshot layer.
