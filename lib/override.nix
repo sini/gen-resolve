@@ -1,7 +1,8 @@
 # Intra-eval incremental override (design §9; DP3/DP6). isClean = the topological reverse cone
-# (gen-graph.dependentsOf) — NOT gen-rebuild.affectedSet. Grounded in the hola fleet analysis (DP6):
-# exact-AFFECTED hash-detection doubles the dominant per-host spine cost intra-eval and only pays off
-# cross-eval (deferred). gen-scope.evalWarm is the sole recompute engine.
+# (gen-graph.dependentsOf) — NOT gen-rebuild.affectedSet (DP6): exact-AFFECTED hash-detection would
+# force (hash) the dominant per-host spine and evalWarm would force it again — a literal 2× of the
+# dominant cost intra-eval — and only pays off cross-eval (deferred). gen-scope.evalWarm is the sole
+# recompute engine.
 # THEORY: RTD 1983 §4.3 — the topological reverse cone is a SOUND OVER-APPROXIMATION of AFFECTED
 #         (RTD's AFFECTED is the cone MINUS the unchanged-value nodes; the §4.1 unchanged-value
 #         cutoff that yields exact/optimal AFFECTED is the deferred cross-eval layer, NOT v1 — so

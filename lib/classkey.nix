@@ -1,7 +1,7 @@
 # The fleet KEY (design §10, D8) — v1 ships the key ONLY, not the cross-invocation cache/gate.
 # Generalized: "stable digest of a consumer-designated attribute's resolved value" (domain-agnostic).
 #
-# CONSERVATIVE KEY, NOT A SOUNDNESS PROOF (hola E3c-C1 two-layer model). classKey NARROWS reuse
+# CONSERVATIVE KEY, NOT A SOUNDNESS PROOF (the two-layer narrow-then-gate model). classKey NARROWS reuse
 # candidates; it does NOT prove two nodes are interchangeable. Keying cross-scope/cross-invocation
 # reuse on it is sound ONLY when the designated attribute is the COMPLETE determinant of the reused
 # output — the reused region must be def-disjoint from every per-scope delta AND fixpoint-closed
