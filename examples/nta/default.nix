@@ -1,6 +1,7 @@
 # §5.2 — the higher-order surface. A `cluster` node's `derived-children` NTA spawns one
 # `service` node per replica MID-FOLD (Vogt 1989 §2): the node grammar grows during
-# evaluation, each spawned node carries its own attributes, and gen-scope memoizes them.
+# evaluation and each spawned node carries its own attributes. (gen-scope memoizes the `get`
+# cache internally, but that is not observable via pure-value equality, so it is not asserted.)
 {
   genResolve,
   genScope,

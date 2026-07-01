@@ -157,7 +157,7 @@ let
       resolved-aspects = stubEq "circular" [ ] "resolution";
     })).success;
 
-  # (4) NTA grammar-growth: derived-children spawns a node NOT in roots; its attr resolves + memoizes
+  # (4) NTA grammar-growth: derived-children spawns a node NOT in roots; its attr resolves through the fold
   ntaRoots = genScope.buildNodes {
     decls.p = {
       seedN = 5;
