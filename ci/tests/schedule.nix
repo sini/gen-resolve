@@ -46,5 +46,31 @@ in
         })).success;
       expected = false;
     };
+    # structural imports reaching resolution resolved-aspects -> van Antwerpen violation, throws
+    test-stratum-violation-throws = {
+      expr =
+        (builtins.tryEval (build {
+          imports = (eq "synthesized" [ "resolved-aspects" ]) // {
+            stratum = "structural";
+          };
+          resolved-aspects = (eq "circular" [ ]) // {
+            stratum = "resolution";
+          };
+        })).success;
+      expected = false;
+    };
+    # terminal output-modules reading resolution is fine (sink exempt)
+    test-terminal-reads-resolution-ok = {
+      expr =
+        (builtins.tryEval (build {
+          output-modules = (eq "synthesized" [ "resolved-aspects" ]) // {
+            stratum = "terminal";
+          };
+          resolved-aspects = (eq "circular" [ ]) // {
+            stratum = "resolution";
+          };
+        })).success;
+      expected = true;
+    };
   };
 }

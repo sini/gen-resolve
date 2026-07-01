@@ -26,12 +26,34 @@ in
       badSccs = builtins.filter (
         scc: isCyclicScc scc && !(builtins.all (isCircular equations) scc)
       ) cond.sccs;
+
+      # DP1 two-stratum partition assert (van Antwerpen 2016 §4.3; den-hoag §B2).
+      # Structural attrs (graph-builders) must not depend on resolution attrs (graph-queriers),
+      # so every resolution query observes a structurally-complete region. terminal is exempt (the sink).
+      strat = a: equations.${a}.stratum;
+      cone = a: graph.reachableFrom { edges = edges; } a; # transitive readsAttrs-cone (a excluded)
+      violations = builtins.concatMap (
+        a:
+        if strat a == "structural" then
+          map (b: {
+            from = a;
+            to = b;
+          }) (builtins.filter (b: (equations ? ${b}) && strat b == "resolution") (cone a))
+        else
+          [ ]
+      ) names;
     in
     if badSccs != [ ] then
       throw (
         "gen-resolve: attribute grammar is circular but not convergent (Knuth 1968 circularity test). "
         + "SCC(s) contain non-`circular` attrs: ${builtins.toJSON badSccs}. "
         + "Declare kind=\"circular\" (Sloane 2009 iterate-to-fixpoint) or break the cycle."
+      )
+    else if violations != [ ] then
+      throw (
+        "gen-resolve: two-stratum partition violated (van Antwerpen 2016 §4.3). "
+        + "Structural attr(s) reach a resolution attr: ${builtins.toJSON violations}. "
+        + "A graph-building attr must not depend on a resolution result."
       )
     else
       {
