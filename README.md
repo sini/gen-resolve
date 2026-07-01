@@ -310,6 +310,16 @@ throw.
 classKey : ResolveCtx → id → sha256-string  # conservative reuse-narrowing digest
 ```
 
+### Internal (exposed for testing)
+
+```
+_buildSchedule : equations → Schedule  # the Knuth graph + Vogt gate + two-stratum assert
+```
+
+`_buildSchedule` is the underscore-internal schedule builder that `resolve` forces once (via `seq`)
+to run the well-definedness gate and stratum partition. It is surfaced on the `.lib` only so the
+`schedule` suite can exercise the gate in isolation; consumers should not call it directly.
+
 ## Testing
 
 Tests use [nix-unit](https://github.com/nix-community/nix-unit); the CI flake (`ci/`) pins nixpkgs
