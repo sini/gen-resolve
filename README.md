@@ -114,7 +114,7 @@ Every computation is a hard-boundary delegation. gen-resolve owns only the sched
 | attribute-dependency topology / condensation / reverse cone | `gen-graph` `condensation` / `reachableFrom` / `dependentsOf` / `coneRank` | Knuth 1968 |
 | dirtiness oracle (deferred cross-invocation layer) | `gen-rebuild` `build` / `affectedSet` | Mokhov 2018 rebuilder / RTD 1983 |
 | strata fold (Neron D>I>P; `cascade.combine` = the per-field strategy) | `gen-algebra` `record.foldLayersTraced` | Neron et al. 2015 §2 |
-| terminal module binding (defunctionalized arg injection) | `gen-bind` `wrapAll` | Reynolds 1972 |
+| terminal module binding (closure-based / partial-application arg injection) | `gen-bind` `wrapAll` | Reynolds 1972 §5 environments (informed by) |
 | convergence loop (Kleene ascent over a `circular` SCC) | `gen-scope` `circular` | Sloane 2010 §2.2 |
 
 ## The static schedule (owned) vs runtime order (delegated)
@@ -351,7 +351,7 @@ pre-applied resolve).
 | Reps, Teitelbaum & Demers (1983) "Incremental Context-Dependent Analysis" | Implements | The AFFECTED set; the topological reverse cone is a sound over-approximation of it |
 | Hedin (2000) "Reference Attributed Grammars" | Implements | Forward reference attributes (`reference`, nearest binding across imports) |
 | Hedin & Magnusson (2003) "JastAdd" | Informed by | Inter-type declarations — the reverse `neededBy` gather |
-| Reynolds (1972) "Definitional Interpreters for Higher-Order Programming Languages" | Implements | Defunctionalized external-arg injection into deferred modules (via `gen-bind.wrapAll`) |
+| Reynolds (1972) "Definitional Interpreters for Higher-Order Programming Languages" | Informed by | Closure-based (partial-application) external-arg injection via `gen-bind.wrapAll` — Reynolds' environment binding (§5 `ENV`/`ext`); **not** defunctionalization per se (the arrow type is retained). Mirrors gen-bind's own hedge. |
 | Arntzenius & Krishnaswami (2016) "Datafun: A Functional Datalog" | Informed by | The monotone / least-fixpoint reading of the convergence ascent |
 | Radul & Sussman (2009) "The Art of the Propagator" | Informed by | Quiescence as the loop's stability criterion |
 | Acar (2002) "Self-Adjusting Computation" | Informed by | Reverse-topological splice of a change through the dependency cone |

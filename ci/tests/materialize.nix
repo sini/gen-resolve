@@ -6,7 +6,8 @@
 # lib.evalModules directly. Shape mirrors den + the gen-bind evalModules-equivalence convention:
 # the option DECLARATION lives in a base module (in den, the NixOS module set); gen-resolve emits
 # the config-SETTING module, whose external `host` binding is injected by terminalBind (Reynolds
-# defunctionalization). The bound module takes `{ host, config, ... }` so gen-bind takes the
+# §5 closure-based partial-application binding, NOT defunctionalization). The bound module takes
+# `{ host, config, ... }` so gen-bind takes the
 # partial-application wrapper path (the fully-applied `allMatched` path is for arg-only modules).
 {
   lib,

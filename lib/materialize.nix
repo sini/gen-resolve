@@ -1,5 +1,5 @@
 # The terminal (design §8-step5). DP2: gen-resolve only FORCES output-modules; the bind lives in the
-# consumer's equation via terminalBind. THEORY: gen-bind = Reynolds 1972 defunctionalized arg injection;
+# consumer's equation via terminalBind. THEORY: gen-bind = Reynolds 1972 §5 closure-based (partial-application) arg injection (Informed-by, NOT defunctionalization — see gen-bind);
 # deferredModule class content = Lorenzen 2025 inspectable lazy constructor (Informed-by).
 { bind }:
 let
