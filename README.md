@@ -59,7 +59,7 @@ stores the graph and never carries domain knowledge.
 | [gen-graph](https://github.com/sini/gen-graph) | Accessor-based graph query combinators (traversal, condensation, phaseOrder) |
 | [gen-select](https://github.com/sini/gen-select) | Selector algebra (pattern matching over graph positions) |
 | [gen-bind](https://github.com/sini/gen-bind) | Module binding (inject external args into NixOS modules) |
-| [gen-dispatch](https://github.com/sini/gen-dispatch) | Relational rule dispatch STEP (stratified phases, conflict resolution) |
+| [gen-dispatch](https://github.com/sini/gen-dispatch) | Relational rule dispatch STEP (stratified groups, conflict resolution) |
 | [gen-resolve](https://github.com/sini/gen-resolve) | Demand-driven RAG evaluator over scope graphs (attribute schedule + convergence loop) |
 | [gen-rebuild](https://github.com/sini/gen-rebuild) | Pure-Nix incremental rebuilder (change propagation, AFFECTED set) |
 | [gen-vars](https://github.com/sini/gen-vars) | Pure-Nix vars/secrets (den-agnostic) |
@@ -142,17 +142,22 @@ the circular-attribute SCCs (Sloane 2010 §2.2), threaded as both the cold fold 
 re-fold. It is *not* a runtime scheduler (that stays Mokhov-2018-§4.1 demand, delegated to
 `gen-scope`); it is the static/definitional ascent that converges an `all-circular` SCC.
 
-The loop and the relational-dispatch STEP are cleanly separable. `gen-dispatch` supplies a
-driver-agnostic per-pass merge fold (`dispatchStep` / `dispatchInit`); composing it with this loop
-runs a relational-dispatch fixpoint:
+The loop and the relational-dispatch STEP are cleanly separable. `gen-dispatch.dispatch` is a pure
+step — a function of `(rules, context)` — so this loop composes with it by threading the plain
+domain state: each pass is one `dispatch`, its output context is the next iterate, and the actions
+are read off the fixpoint by one post-convergence dispatch:
 
 ```nix
-gen-scope.circular { init = dispatchInit ctx; inherit eq; } (dispatchStep { inherit dispatch; } cfg)
+step      = _self: _id: ctx: (genDispatch.dispatch (cfg // { context = ctx; })).context;
+converged = (gen-scope.circular { init = ctx0; inherit eq; } step) { } null;
+actions   = (genDispatch.dispatch (cfg // { context = converged; })).actions;
 ```
 
-The monotone / least-fixpoint reading of the ascent follows Arntzenius & Krishnaswami 2016
-(Datafun); quiescence (`eq` reaching a fixed point ⇒ halt) is the Radul & Sussman 2009 propagator
-stability criterion.
+Recomputing at the fixpoint makes the action set a function of the converged state, never the
+iteration path (a confluence guarantee), so no cross-pass accumulator is threaded through the
+circular value — the domain state is the only thing the ascent carries. The monotone /
+least-fixpoint reading of the ascent follows Arntzenius & Krishnaswami 2016 (Datafun); quiescence
+(`eq` reaching a fixed point ⇒ halt) is the Radul & Sussman 2009 propagator stability criterion.
 
 ## `override` — intra-eval incremental
 
