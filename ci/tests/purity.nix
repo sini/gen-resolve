@@ -8,7 +8,7 @@
 # Scope: lib/**.nix (recursively) + the root flake.nix + default.nix. NOT ci/ — the
 # test harness legitimately uses nixpkgs.lib (including, here, to scan and for the
 # DP5 evalModules-equivalence oracle).
-{ lib, ... }:
+{ genPrelude, lib, ... }:
 let
   libDir = ../../lib;
 
@@ -62,7 +62,8 @@ let
   ];
 
   violations = lib.concatMap (
-    src: map (tok: "${src.name}: '${tok}'") (lib.filter (tok: lib.hasInfix tok src.code) forbidden)
+    src:
+    map (tok: "${src.name}: '${tok}'") (lib.filter (tok: genPrelude.hasInfix tok src.code) forbidden)
   ) sources;
 in
 {
