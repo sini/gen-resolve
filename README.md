@@ -4,7 +4,7 @@
 
 Pure-Nix, `nixpkgs.lib`-free, demand-driven **higher-order reference-attribute-grammar (RAG) evaluator** over algebraic scope graphs. `resolve` folds a set of semantic equations into a demand fixpoint; `materialize` forces the terminal and binds the result.
 
-gen-resolve is the **conductor**. It owns exactly two things: the static attribute-dependency *schedule* (Knuth 1968 dependency graph + the Vogt 1989 HOAG well-definedness gate + the two-stratum partition assert) and the **convergence loop** — the cold/warm Kleene ascent (Sloane 2010 §2.2) that resolves a mutually-recursive `circular` region. Every actual computation is a hard-boundary delegation to a pure sibling: gen-resolve supplies accessor *functions*, never concrete node maps, and domain knowledge (NixOS, aspects, den's attributes) stays in the consumer. Runtime evaluation order is demand — Nix laziness inside `gen-scope.eval`'s `lib.fix` (Mokhov 2018 §4.1); gen-resolve never re-orders thunks.
+gen-resolve is the **conductor**. It owns exactly two things: the static attribute-dependency *schedule* (Knuth 1968 dependency graph + the Vogt 1989 HOAG well-definedness gate + the N-way stratified partition assert, default two-stratum) and the **convergence loop** — the cold/warm Kleene ascent (Sloane 2010 §2.2) that resolves a mutually-recursive `circular` region. Every actual computation is a hard-boundary delegation to a pure sibling: gen-resolve supplies accessor *functions*, never concrete node maps, and domain knowledge (NixOS, aspects, den's attributes) stays in the consumer. Runtime evaluation order is demand — Nix laziness inside `gen-scope.eval`'s `lib.fix` (Mokhov 2018 §4.1); gen-resolve never re-orders thunks.
 
 gen-resolve is **Class B**: it depends on five pure gen siblings (`gen-scope`, `gen-graph`, `gen-rebuild`, `gen-algebra`, `gen-bind`). `gen-prelude` is a transitive dependency only — each sibling carries its own; the `.lib` surface takes no direct prelude. The library (`lib/`) is `nixpkgs.lib`-free (enforced by `ci/tests/purity.nix`); nixpkgs is pulled only in `ci/` for the test harness and the evalModules-equivalence oracle.
 
@@ -122,17 +122,36 @@ Every computation is a hard-boundary delegation. gen-resolve owns only the sched
 
 ## The static schedule (owned) vs runtime order (delegated)
 
-`resolve` forces `buildSchedule` once (carried edit-invariant in the `ResolveCtx`). It:
+`resolve` forces the schedule once — `_scheduleWith` at the resolve's `strataOrder` (default
+two-stratum), carried edit-invariant in the `ResolveCtx`. It:
 
 - builds the Knuth attribute-dependency graph (`a → b` iff `b ∈ readsAttrs a`);
 - runs the **Vogt well-definedness gate**: a cyclic SCC is admissible iff every member is a
   declared `circular` attribute (Sloane 2010 §2.2 iterate-to-fixpoint); otherwise it throws the
   Knuth 1968 circularity error;
-- runs the **two-stratum partition assert** (van Antwerpen 2016 §4.3): a `structural` attribute's
-  read-cone may not reach a `resolution` attribute (the `terminal` sink is exempt), so every
-  resolution query observes a structurally-complete region.
+- runs the **stratum partition assert** (van Antwerpen 2016 §4.3, generalized N-way): an attribute's
+  read-cone may not reach a *strictly-later* stratum in the declared order (the `terminal` sink is
+  exempt), so every query observes a region complete up to its own stratum. The shipped two-stratum
+  case (`structural` may not reach `resolution`) is the default order — see below.
 
 Runtime order is never scheduled by gen-resolve — it is Nix demand inside the delegated fixpoint.
+
+### Stratum order (N-way schedule)
+
+`resolve` takes an optional `strataOrder` — the declared total order of strata, index 0 = the base
+graph-shaping stratum (the schedule runs inside `resolve`). The static schedule enforces the
+**stratified partition** (Apt–Blair–Walker 1988; van Antwerpen 2016 §4.3): a rule may read attributes
+at strata **≤ its own** (positive dependency); reading a **strictly-later** stratum is a schedule
+error. `terminal` is the materialization sink — exempt (it may read any stratum). Default order:
+`[ "structural" "resolution" ]`, under which the schedule reproduces the shipped two-stratum
+discipline (a structural graph-builder may not depend on a resolution result).
+
+- `resolve { …, strataOrder ? [ "structural" "resolution" ] }` — the PUBLIC N-way entry.
+- `_scheduleWith` / `_buildSchedule` — the underlying schedule builders, exposed `_`-prefixed as
+  internal test helpers only (see the API Reference).
+
+Every non-`terminal` attribute's declared stratum must appear in `strataOrder` (the unknown-stratum
+guard throws NAMED at schedule time).
 
 ## The convergence loop (owned)
 
@@ -277,7 +296,8 @@ resolve : { roots; equations; parseParent; declaredEdges?; settings? } → Resol
 ```
 
 Cold fold. Returns a sealed 10-field `ResolveCtx = { eval; accessor; builtCtx; schedule; trace; roots; equations; parseParent; declaredEdges; settings }`.
-Folds `equations.compute` into `gen-scope.eval` (`lib.fix`); forces `buildSchedule` once via `seq`.
+Folds `equations.compute` into `gen-scope.eval` (`lib.fix`); forces the schedule (`_scheduleWith` at
+`strataOrder`) once via `seq`.
 `accessor.edges = declaredEdges` is the consumer→producer edge and MUST over-declare (soundness
 condition (c)). `trace.<id>.deps` is the eager recorded read-edge set; `builtCtx` is a LAZY
 `gen-rebuild.build` hook, never forced by v1.
@@ -318,15 +338,28 @@ throw.
 classKey : ResolveCtx → id → sha256-string  # conservative reuse-narrowing digest
 ```
 
-### Internal (exposed for testing)
+### Schedule
+
+The **public** N-way knob is `resolve`'s `strataOrder` argument — the schedule runs inside `resolve`:
 
 ```
-_buildSchedule : equations → Schedule  # the Knuth graph + Vogt gate + two-stratum assert
+resolve : { …, strataOrder ? [ "structural" "resolution" ] } → ResolveCtx
 ```
 
-`_buildSchedule` is the underscore-internal schedule builder that `resolve` forces once (via `seq`)
-to run the well-definedness gate and stratum partition. It is surfaced on the `.lib` only so the
-`schedule` suite can exercise the gate in isolation; consumers should not call it directly.
+The schedule builders themselves are exposed on the `.lib` `_`-prefixed, as **internal**,
+test-only helpers (not public API):
+
+```
+_scheduleWith : { equations; strataOrder ? [ "structural" "resolution" ] } → Schedule
+_buildSchedule : equations → Schedule   # = _scheduleWith at the default order (back-compat)
+```
+
+In `lib/schedule.nix` these are `scheduleWith` / `buildSchedule`; the `.lib` re-exports them
+`_`-prefixed. `_scheduleWith` is the N-way schedule builder (Knuth graph + Vogt gate + the stratified
+partition assert over `strataOrder`); `_buildSchedule` is it at the default two-stratum order.
+`resolve` forces the schedule once (via `seq`) to run the well-definedness gate and stratum
+partition; the `_`-prefixed pair is surfaced only so the `schedule` suite can exercise the gate in
+isolation. Consumers pass `strataOrder` through `resolve` rather than calling these directly.
 
 ## Testing
 
@@ -353,7 +386,7 @@ pre-applied resolve).
 | Knuth (1968) "Semantics of Context-Free Languages" | **Implements** | The attribute-dependency schedule (`a → b` iff `b ∈ readsAttrs a`) and the circularity test that gates a cyclic SCC |
 | Vogt, Swierstra & Kuiper (1989) "Higher-Order Attribute Grammars" | **Implements** | Non-terminal attributes (`nta`) — the grammar grows mid-fold — and the HOAG well-definedness gate lifted onto Knuth's circularity test |
 | Neron, Tolmach, Visser & Wachsmuth (2015) "A Theory of Name Resolution" | Implements | The D>I>P strata fold (`cascade`) over neron-ordered import layers; parent-chain / reference resolution over scope graphs |
-| van Antwerpen et al. (2016) "A Constraint Language for Static Semantic Analysis" (Statix) | Implements | The two-stratum partition assert (§4.3): a `structural` cone may not reach a `resolution` attribute |
+| van Antwerpen et al. (2016) "A Constraint Language for Static Semantic Analysis" (Statix) | Implements | The stratified partition assert (§4.3), generalized N-way over a declared `strataOrder`; default two-stratum: a `structural` cone may not reach a `resolution` attribute (with Apt–Blair–Walker 1988 for the positive-dependency admission) |
 | Mokhov, Mitchell & Peyton Jones (2018) "Build Systems à la Carte" | **Implements** | Demand-driven runtime order (§4.1) — Nix laziness *is* the schedule; the rebuilder dimension backs the deferred cross-invocation oracle |
 | Sloane, Kats & Visser (2010) "A Pure Object-Oriented Embedding of Attribute Grammars" | Implements | The convergence loop — iterate-to-fixpoint (Kleene ascent, §2.2) over an `all-circular` SCC |
 | Reps, Teitelbaum & Demers (1983) "Incremental Context-Dependent Analysis" | Implements | The AFFECTED set; the topological reverse cone is a sound over-approximation of it |
