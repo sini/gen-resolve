@@ -22,17 +22,22 @@ let
   ];
   changesTopology = _old: newDecls: builtins.any (k: newDecls ? ${k}) edgeKeys;
 
-  # resolution+terminal attrs are warm-served from the cold prior; structural attrs reshape the graph
-  # and always recompute (children/derived-children are never warm-served by gen-scope.evalWarm anyway).
+  # non-base (resolution-and-later) attrs are warm-served from the cold prior; base (index-0, graph-shaping)
+  # attrs reshape the graph and always recompute (children/derived-children are never warm-served by
+  # gen-scope.evalWarm anyway). `!= base` over the sealed `ctx.strataOrder` generalizes the shipped
+  # `resolution|terminal` set to any declared order; the default reproduces it.
   trackedFor =
     ctx: _nid:
-    builtins.filter (
-      a:
-      let
-        s = ctx.equations.${a}.stratum;
-      in
-      s == "resolution" || s == "terminal"
-    ) (builtins.attrNames ctx.equations);
+    let
+      # dead-path default for hand-built ctxs (resolve seals ctx.strataOrder); mirrors schedule.defaultStrataOrder.
+      base = builtins.head (
+        ctx.strataOrder or [
+          "structural"
+          "resolution"
+        ]
+      );
+    in
+    builtins.filter (a: ctx.equations.${a}.stratum != base) (builtins.attrNames ctx.equations);
 
   # project prior clean values for warm reuse (lazy; collection-tier reads force O(n))
   priorFrom =

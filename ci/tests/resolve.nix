@@ -95,5 +95,61 @@ in
         cyclic.eval.get "child" "self-v";
       expected = 1;
     };
+    # resolve threads a custom strataOrder → the N-way assert fires at resolve time (schedule seq-forced).
+    test-resolve-nway-violation-throws = {
+      expr =
+        (builtins.tryEval (
+          genResolve.resolve {
+            roots = [ ];
+            parseParent = _: null;
+            strataOrder = [
+              "structural"
+              "resolution"
+              "closure"
+            ];
+            equations = {
+              early = genResolve.attr {
+                name = "early";
+                kind = "synthesized";
+                stratum = "resolution";
+                readsAttrs = [ "late" ];
+                compute = self: id: null;
+              };
+              late = genResolve.attr {
+                name = "late";
+                kind = "synthesized";
+                stratum = "closure";
+                readsAttrs = [ ];
+                compute = self: id: null;
+              };
+            };
+          }
+        )).success;
+      expected = false;
+    };
+    # trackedAttrs (public _trackedAttrs) warm-serves the non-base strata under a custom order.
+    test-resolve-nway-tracked-nonbase = {
+      expr = builtins.sort builtins.lessThan (
+        genResolve._trackedAttrs [ "structural" "resolution" "closure" ] {
+          base = {
+            stratum = "structural";
+          };
+          mid = {
+            stratum = "resolution";
+          };
+          top = {
+            stratum = "closure";
+          };
+          sink = {
+            stratum = "terminal";
+          };
+        }
+      );
+      expected = [
+        "mid"
+        "sink"
+        "top"
+      ];
+    };
   };
 }

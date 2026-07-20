@@ -117,7 +117,7 @@ let
       };
 in
 {
-  inherit scheduleWith;
+  inherit scheduleWith defaultStrataOrder;
   # back-compat: the shipped two-stratum entry (default order).
   buildSchedule = equations: scheduleWith { inherit equations; };
 }
