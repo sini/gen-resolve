@@ -38,4 +38,5 @@ in
   inherit (classkey) classKey;
   # internal, `_`-prefixed — exposed for the schedule tests (Task 2/3); not part of the public surface
   _buildSchedule = schedule.buildSchedule;
+  _scheduleWith = schedule.scheduleWith;
 }

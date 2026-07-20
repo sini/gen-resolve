@@ -9,6 +9,13 @@ let
     name = "_";
   };
   build = genResolve._buildSchedule; # `_`-internal exposed by lib/default.nix (Task 0 Step 3)
+  buildN = genResolve._scheduleWith; # `_`-internal exposed by lib/default.nix (this task)
+  eqAt = kind: reads: stratum: {
+    inherit kind stratum;
+    readsAttrs = reads;
+    compute = self: id: null;
+    name = "_";
+  };
 in
 {
   flake.tests.schedule = {
@@ -94,6 +101,96 @@ in
           };
           enriched-context = (eq "circular" [ "enriched-context" ]) // {
             stratum = "structural";
+          };
+        })).success;
+      expected = true;
+    };
+    test-nway-later-reads-earlier-ok = {
+      expr =
+        (builtins.tryEval (buildN {
+          strataOrder = [
+            "structural"
+            "resolution"
+            "closure"
+          ];
+          equations = {
+            reach = eqAt "synthesized" [ "rel" ] "closure";
+            rel = eqAt "synthesized" [ ] "resolution";
+          };
+        })).success;
+      expected = true;
+    };
+    test-nway-earlier-reads-later-throws = {
+      expr =
+        (builtins.tryEval (buildN {
+          strataOrder = [
+            "structural"
+            "resolution"
+            "closure"
+          ];
+          equations = {
+            rel = eqAt "synthesized" [ "reach" ] "resolution";
+            reach = eqAt "synthesized" [ ] "closure";
+          };
+        })).success;
+      expected = false;
+    };
+    test-nway-unknown-stratum-throws = {
+      expr =
+        (builtins.tryEval (buildN {
+          strataOrder = [
+            "structural"
+            "resolution"
+          ];
+          equations = {
+            a = eqAt "synthesized" [ ] "bogus";
+          };
+        })).success;
+      expected = false;
+    };
+    test-nway-terminal-exempt = {
+      expr =
+        (builtins.tryEval (buildN {
+          strataOrder = [
+            "structural"
+            "resolution"
+            "closure"
+          ];
+          equations = {
+            out = eqAt "synthesized" [ "reach" ] "terminal";
+            reach = eqAt "synthesized" [ ] "closure";
+          };
+        })).success;
+      expected = true;
+    };
+    # multi-hop: structural reaches closure via resolution (2-hop cone) → violation surfaces transitively.
+    test-nway-multihop-cone-throws = {
+      expr =
+        (builtins.tryEval (buildN {
+          strataOrder = [
+            "structural"
+            "resolution"
+            "closure"
+          ];
+          equations = {
+            a = eqAt "synthesized" [ "b" ] "structural";
+            b = eqAt "synthesized" [ "c" ] "resolution";
+            c = eqAt "synthesized" [ ] "closure";
+          };
+        })).success;
+      expected = false;
+    };
+    test-nway-intra-stratum-ok = {
+      expr =
+        (builtins.tryEval (buildN {
+          strataOrder = [
+            "structural"
+            "resolution"
+            "closure"
+          ];
+          equations = {
+            a = eqAt "synthesized" [ "b" ] "closure";
+            b = eqAt "synthesized" [ ] "closure";
           };
         })).success;
       expected = true;
