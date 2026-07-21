@@ -96,5 +96,45 @@ in
         })).success;
       expected = false;
     };
+    # JSL/ACI admission: semilattice-set is accepted IFF the production declares acc = true
+    test-jsl-cascade-acc-ok = {
+      expr =
+        (builtins.tryEval (cascade {
+          name = "x";
+          channel = "c";
+          combine = "semilattice-set";
+          acc = true;
+        })).success;
+      expected = true;
+    };
+    # ACC is undecidable from an arbitrary combine — without the declaration it stays rejected
+    test-jsl-cascade-no-acc-throws = {
+      expr =
+        (builtins.tryEval (cascade {
+          name = "x";
+          channel = "c";
+          combine = "semilattice-set";
+        })).success;
+      expected = false;
+    };
+    # the three associative strategies register unchanged
+    test-cascade-assoc-unchanged = {
+      expr =
+        builtins.all
+          (
+            s:
+            (builtins.tryEval (cascade {
+              name = "x";
+              channel = "c";
+              combine = s;
+            })).success
+          )
+          [
+            "replace"
+            "append"
+            "recursive"
+          ];
+      expected = true;
+    };
   };
 }

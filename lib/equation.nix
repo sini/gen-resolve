@@ -34,7 +34,8 @@ let
       stratum = stratumOf kind stratum;
     };
 
-  # foldLayersTraced strategies a cascade may use — the associative, non-semilattice merges D6 permits.
+  # foldLayersTraced strategies a cascade may use unconditionally — the associative,
+  # non-semilattice merges D6 permits.
   cascadeStrategies = [
     "replace"
     "append"
@@ -75,18 +76,28 @@ in
   # -> parent), most-specific LAST. `combine` selects the per-field gen-algebra fold strategy
   # (D13, foldLayersTraced) applied uniformly to every field: "replace" (shadow / last-wins,
   # the default) | "append" (list concat) | "recursive" (deep //) — exactly the associative,
-  # non-semilattice merges D6 permits. A commutative/idempotent "semilattice-set" is rejected
-  # at registration. (foldLayersTraced's `strategies` is the seam — the param is real, not inert.)
+  # non-semilattice merges D6 permits. The commutative/idempotent "semilattice-set" (JSL/ACI
+  # set-union) is admitted too, but ONLY when the production declares `acc = true`: ACC (finite
+  # height / ascending-chain condition) is undecidable from an arbitrary combine, so it is a
+  # declared carrier property, not an inferred one. (foldLayersTraced's `strategies` is the
+  # seam — the param is real, not inert; a declared semilattice-set flows straight through.)
   cascade =
     {
       name,
       channel,
       strata ? { },
       combine ? "replace",
+      acc ? false,
     }:
     assert
       (builtins.elem combine cascadeStrategies)
-      || throw "gen-resolve.cascade: combine must be a foldLayersTraced strategy (replace|append|recursive) — associative-only (D6); the reserved commutative 'semilattice-set' is rejected";
+      || (combine == "semilattice-set" && acc)
+      || throw (
+        if combine == "semilattice-set" then
+          "gen-resolve.cascade: combine 'semilattice-set' (JSL/ACI) requires a declared ACC/finite-height carrier — set acc = true"
+        else
+          "gen-resolve.cascade: combine must be replace|append|recursive|semilattice-set (associative, or JSL+ACC)"
+      );
     mk {
       inherit name;
       kind = "cascade";
