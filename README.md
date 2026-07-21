@@ -33,7 +33,7 @@ surface:
 |---|---|---|---|
 | `attr { name; kind; compute; readsAttrs; stratum? }` | as given | explicit | a plain semantic equation over the dependency DAG (Knuth 1968) |
 | `nta { name; spawn }` | `nta` | `[]` | a non-terminal attribute — the grammar *grows* mid-fold as new typed nodes are spawned (Vogt 1989 §2) |
-| `cascade { name; channel; strata?; combine? }` | `cascade` | `["imports"]` | a D>I>P strata fold over the neron-ordered import layers (Neron 2015 §2); `combine ∈ {replace, append, recursive}` |
+| `cascade { name; channel; strata?; combine?; acc? }` | `cascade` | `["imports"]` | a D>I>P strata fold over the neron-ordered import layers (Neron 2015 §2); `combine ∈ {replace, append, recursive}` unconditional, or `semilattice-set` (JSL/ACI) iff `acc = true` |
 | `reference { name; select; target? }` | `reference` | `["imports"]` | a forward reference attribute (nearest binding, Hedin 2000) or a reverse `neededBy` gather (Hedin & Magnusson 2003) |
 
 `resolve { roots; equations; parseParent; declaredEdges?; settings? }` folds these into a sealed
@@ -253,7 +253,7 @@ The ONLY authoring surface. Each yields
 ```
 attr      : { name; kind; compute; readsAttrs; stratum? } → Equation
 nta       : { name; spawn }                               → Equation
-cascade   : { name; channel; strata?; combine? }          → Equation
+cascade   : { name; channel; strata?; combine?; acc? }    → Equation
 reference : { name; select; target? }                     → Equation
 ```
 
@@ -280,9 +280,14 @@ resolve.nta {
 ```
 
 **`cascade`** — a D>I>P strata fold over the neron-ordered import layers.
-`combine ∈ { "replace" (default, last-wins), "append" (list concat), "recursive" (deep //) }` — the
-associative merges permitted; `"semilattice-set"` is rejected at registration. Delegates to
-`gen-algebra.record.foldLayersTraced` (least-specific-first, LAST wins). Stratum `resolution`.
+`combine ∈ { "replace" (default, last-wins), "append" (list concat), "recursive" (deep //) }` are the
+associative merges, admitted **unconditionally**. `"semilattice-set"` (the JSL/ACI set-union
+combine — associative, commutative, idempotent) is admitted **only** when the production also
+declares `acc = true`. The ascending-chain condition (ACC / finite carrier height) is what bounds
+the semi-naïve fixpoint, and it is undecidable from an arbitrary `combine`; so it is a *declared*
+carrier property, not one gen-resolve infers — `cascade { combine = "semilattice-set"; }` without
+`acc = true` throws at registration. Delegates to `gen-algebra.record.foldLayersTraced`
+(least-specific-first, LAST wins). Stratum `resolution`.
 
 **`reference`** — a forward or reverse reference attribute. `target = "includes"` (default) resolves
 the nearest binding across imports (Hedin 2000); `target = "neededBy"` reverse-gathers over the
