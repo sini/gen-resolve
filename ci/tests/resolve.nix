@@ -127,39 +127,17 @@ in
         )).success;
       expected = false;
     };
-    # trackedAttrs (public _trackedAttrs) warm-serves the non-base strata under a custom order.
-    test-resolve-nway-tracked-nonbase = {
-      expr = builtins.sort builtins.lessThan (
-        genResolve._trackedAttrs [ "structural" "resolution" "closure" ] {
-          base = {
-            stratum = "structural";
-          };
-          mid = {
-            stratum = "resolution";
-          };
-          top = {
-            stratum = "closure";
-          };
-          sink = {
-            stratum = "terminal";
-          };
-        }
-      );
-      expected = [
-        "mid"
-        "sink"
-        "top"
-      ];
-    };
-
-    # ===== the builtCtx call sites, FORCED =====
+    # ===== the builtCtx call site, FORCED =====
     #
-    # `builtCtx` is a LAZY ResolveCtx field: nothing on the cold or warm path forces it, so every
-    # other cell in this repository passes whether or not the library supplying `build` supplies
-    # anything at all. That was MEASURED, not assumed — the whole suite ran green, 69/69, against a
-    # revision of that library with an EMPTY export surface. A suite that cannot tell a working
-    # dependency from an absent one is not evidence about the dependency, so the two `build` call
-    # sites are forced here and nowhere else.
+    # `builtCtx` is a LAZY ResolveCtx field: nothing on the cold path forces it, so every other cell
+    # in this repository passes whether or not the library supplying `build` supplies anything at
+    # all. That was MEASURED, not assumed — the whole suite ran green, 69/69, against a revision of
+    # that library with an EMPTY export surface. A suite that cannot tell a working dependency from
+    # an absent one is not evidence about the dependency, so the `build` call site is forced here and
+    # nowhere else.
+    #
+    # There USED to be two such sites; the second was the warm fold's, and the warm fold has moved to
+    # the plane. The forcing cell moved with it rather than being dropped.
     #
     # Forced through `.store` and `.trace` rather than through the field's presence: the field is an
     # attrset that exists whatever `build` returned, so asserting it is there would rebuild the same
@@ -181,10 +159,7 @@ in
       ];
     };
 
-    # And the hash is a real one. The per-node tracked attrset is `{ }` in this fixture — no
-    # equation here sits in a tracked stratum — so a cell reading a stored VALUE would be asserting
-    # emptiness and would pass against a store that returned nothing. The hash is computed over
-    # whatever the node holds, so it is non-vacuous regardless.
+    # And the hash is a real one, computed over whatever the node holds.
     test-builtctx-cold-trace-hash-is-a-hash = {
       expr =
         let
@@ -194,22 +169,19 @@ in
       expected = true;
     };
 
-    # The second call site: the override path builds a FRESH builtCtx over the overridden eval and
-    # accessor. Forcing it covers the site the cold path never reaches.
-    test-builtctx-override-forces-the-plane = {
-      expr =
-        let
-          after = genResolve.override ctx {
-            id = "child";
-            newDecls = {
-              v = 7;
-            };
-          };
-        in
-        builtins.sort builtins.lessThan (builtins.attrNames after.builtCtx.store);
+    # The stored value itself, which this cell can now assert because there IS one. Under the
+    # declared-stratum filter this projection was `{ }` for this fixture — every equation here sits
+    # in the base stratum — so the cell above carried a note that a value assertion would be
+    # asserting emptiness. The projection is now the evaluator's resolutional vocabulary, and BOTH
+    # directions are visible in one expectation: `children` is inside the reserved structural
+    # namespace and is absent, the other three are outside it and are present. A projection that
+    # took everything, and one that took nothing, each fail this cell.
+    test-builtctx-cold-store-projects-resolutional = {
+      expr = builtins.sort builtins.lessThan (builtins.attrNames ctx.builtCtx.store.child);
       expected = [
-        "child"
-        "parent"
+        "imports"
+        "plus-one"
+        "self-v"
       ];
     };
   };

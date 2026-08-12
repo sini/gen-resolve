@@ -2,11 +2,22 @@
 # is only a TRANSITIVE dep (each sibling carries its own); the .lib surface takes no direct prelude.
 # Function <=> deps (convention §8): this file has deps, so it is a function of named VALUES.
 #
-# gen-resolve is the CONDUCTOR — it owns ONLY the static attribute-dependency schedule
-# (schedule.nix) and the cold/warm fold (resolve.nix / override.nix); every instrument is a
-# HARD-boundary delegation to a pure sibling (scope demand fixpoint, graph topology, the memo
-# plane's dirtiness oracle, algebra strata fold, bind terminal). Runtime order is demand — Nix
-# laziness inside scope.eval's lib.fix (Mokhov 2018 §4.1); gen-resolve never re-orders thunks.
+# gen-resolve is the CONDUCTOR — it owns the static attribute-dependency schedule (schedule.nix) and
+# the COLD fold (resolve.nix); every instrument is a HARD-boundary delegation to a pure sibling
+# (scope demand fixpoint, graph topology, the memo plane's reuse decision, algebra strata fold, bind
+# terminal). Runtime order is demand — Nix's own laziness inside the evaluator's fixpoint;
+# gen-resolve never re-orders thunks.
+#
+# THE WARM FOLD HAS LEFT. `override` and `warmResolve` are `gen-memo`'s `warmOverride` and
+# `warmResolve`, together with the override cone that decided them: deciding what may be reused from
+# a prior evaluation is the incremental plane's whole concern, and it was being answered here from a
+# DECLARED stratum that a derived classifier supersedes. `stratumOf` survives that supersession in
+# its OTHER role — assigning the strata the schedule orders — and travels with `schedule.nix`
+# wherever the ordering work lands; it is the warm-servability role alone that died.
+#
+# WHAT ELSE IS NOT HERE, so its absence is not read as an oversight: the cold fold's own destination
+# is the evaluator, and the static schedule's is the query-gate home. Both dispositions are settled;
+# neither landing is this change.
 {
   scope,
   graph,
@@ -20,7 +31,6 @@ let
   resolveM = import ./resolve.nix { inherit scope memo schedule; };
   contract = import ./contract.nix; # bare value (dep-free)
   materialize = import ./materialize.nix { inherit bind; };
-  override = import ./override.nix { inherit scope graph memo; };
   classkey = import ./classkey.nix; # bare value (dep-free)
 in
 # curated inherit (convention §9): hide internal helpers, group the surface
@@ -34,10 +44,8 @@ in
   inherit (resolveM) resolve;
   inherit (contract) project edges why;
   inherit (materialize) materialize materializeAll terminalBind;
-  inherit (override) override warmResolve;
   inherit (classkey) classKey;
-  # internal, `_`-prefixed — exposed for the schedule tests (Task 2/3); not part of the public surface
+  # internal, `_`-prefixed — exposed for the schedule tests; not part of the public surface
   _buildSchedule = schedule.buildSchedule;
   _scheduleWith = schedule.scheduleWith;
-  _trackedAttrs = resolveM.trackedAttrs;
 }

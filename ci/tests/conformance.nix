@@ -3,8 +3,11 @@
 #   2. well-definedness gate throws                      Knuth 1968 circularity test / Vogt 1989
 #   3. two-stratum partition assert throws               van Antwerpen 2016 §4.3
 #   4. NTA grammar-growth (a typed node appears mid-fold)  Vogt 1989 §2 (higher-order AG)
-#   5. override byte-identical to pre-applied resolve     RTD 1983 SOUNDNESS (not minimality: the
-#                                                          O(|AFFECTED|) optimality is deferred, v1 recomputes the cone)
+#
+# A fifth property stood here — the warm override's byte-identity against a pre-applied cold resolve,
+# Reps–Teitelbaum–Demers 1983 soundness. It moved to `gen-memo` with the fold it is about, and it was
+# strengthened on the way: the seeded shape it ran over held ONE node, which is always the edited node
+# and therefore always recomputed, so the property could not observe a reused value at all.
 #
 # DAGs are derived from integer seeds (no Math.random): a_i reads a_j (j<i) iff (seed+7i+3j) mod 3 != 0,
 # so every generated attribute grammar is acyclic by construction and varies with the seed.
@@ -18,7 +21,6 @@
 let
   inherit (genResolve)
     resolve
-    override
     project
     attr
     nta
@@ -108,31 +110,6 @@ let
       ref = refStore seed 0;
     in
     builtins.all (i: project ctx "node" (aName i) == ref.${aName i}) (range n)
-  ) seeds;
-
-  # (5) override == fresh resolve with the decl pre-applied, over every seeded DAG
-  overrideByteIdentical = builtins.all (
-    seed:
-    let
-      eqs = eqsFor seed;
-      ctx = resolve {
-        roots = rootsFor 3;
-        equations = eqs;
-        parseParent = _: null;
-      };
-      ctx' = override ctx {
-        id = "node";
-        newDecls = {
-          base = 9;
-        };
-      };
-      fresh = resolve {
-        roots = rootsFor 9;
-        equations = eqs;
-        parseParent = _: null;
-      };
-    in
-    builtins.all (i: project ctx' "node" (aName i) == project fresh "node" (aName i)) (range n)
   ) seeds;
 
   # (2)/(3) schedule gates — minimal stub equations
@@ -246,12 +223,6 @@ in
     # Vogt 1989 §2 — higher-order NTA grows the node grammar mid-fold (a real typed node appears)
     test-nta-grammar-growth = {
       expr = ntaGrew;
-      expected = true;
-    };
-    # RTD 1983 SOUNDNESS — incremental override == from-scratch resolve (byte-identical). This tests
-    # correctness, NOT RTD's O(|AFFECTED|) minimality (deferred; v1 recomputes the whole reverse cone).
-    test-override-byte-identical = {
-      expr = overrideByteIdentical;
       expected = true;
     };
   };

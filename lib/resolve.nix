@@ -1,5 +1,11 @@
 # Cold resolve — folds equations into the demand fixpoint and seals the ResolveCtx.
-# THEORY: Mokhov 2018 §4.1 (Nix laziness = the runtime schedule); the static schedule is Task 2/3.
+#
+# THEORY: Mokhov, Mitchell & Peyton Jones (2018) supply the scheduler/rebuilder decomposition this
+# library sits inside; the mapping of the SCHEDULER half onto Nix's own laziness is this ecosystem's,
+# not a sentence of that paper's. (Measured at the archived extraction: `laziness` and `demand` each
+# occur 0 times, against live controls `scheduler` ⇒ 49 and `rebuilder` ⇒ 70 lines in the same run,
+# and §4.1 is that paper's SCHEDULERS section. The mapping is defensible; the attribution that stood
+# here was not.) The static attribute-dependency schedule is `schedule.nix`.
 {
   scope,
   memo,
@@ -8,42 +14,35 @@
 let
   defaultStrataOrder = schedule.defaultStrataOrder;
 
-  # The non-base (resolution-and-later) stratum attrs — warm-served on override (DP3); also the DP4 hash
-  # target for the DEFERRED cross-eval layer. Base (index-0, graph-shaping) attrs shape the graph and are
-  # never warm-served. Generalizes the shipped `resolution|terminal` set to `stratum != base` over any
-  # declared order (base = head strataOrder); the default order [structural resolution] reproduces it.
-  trackedAttrs =
-    strataOrder: equations:
-    let
-      base = builtins.head strataOrder;
-    in
-    builtins.filter (a: equations.${a}.stratum != base) (builtins.attrNames equations);
-
-  snapshot =
-    strataOrder: equations: ev: id:
-    builtins.listToAttrs (
-      map (a: {
-        name = a;
-        value = ev.get id a;
-      }) (trackedAttrs strataOrder equations)
-    );
-
-  # DP4: the incremental plane's oracle over a given eval + accessor. Built per (eval, accessor); its recompute
-  # reads its OWN paired eval, so its hashes are correct for the cross-eval detection use. It is a LAZY
-  # ResolveCtx field — NEVER forced by v1 resolve/materialize/override (which use the topological cone,
-  # DP3), so the plane's eager node-cycle check never trips. Activated only by the cross-invocation layer.
+  # The plane's memo ctx over a given eval + accessor. Built per (eval, accessor); its recompute reads
+  # its OWN paired eval, so its hashes describe that evaluation and no other. It is a LAZY ResolveCtx
+  # field that nothing on the cold path forces, so the store's eager node-cycle check is never reached
+  # by a cold resolve. It is the hook a reuse layer ACROSS evaluations would enter through, and that
+  # layer is a recorded growth path rather than shipped scope.
+  #
+  # THE PROJECTION IS READ OFF THE EVALUATOR AND IS NOT COMPUTED HERE. What may be reused is the
+  # evaluator's own resolutional vocabulary — its attribute names minus the structural partition —
+  # which it publishes per node. The filter that stood here decided the same question from a DECLARED
+  # stratum and has been superseded: a derived classifier governs over a declaration, the derivation
+  # is available, and keeping a second answer to one question in a second library is how the two come
+  # to disagree.
   mkBuiltCtx =
-    strataOrder: equations: ev: accessor:
+    ev: accessor:
     memo.build {
       inherit accessor;
       recompute =
         _acc: _store: id:
-        snapshot strataOrder equations ev id; # reads its paired eval (correct for cross-eval)
+        builtins.listToAttrs (
+          map (a: {
+            name = a;
+            value = ev.get id a;
+          }) (ev.resolutional id)
+        );
       hashOf = v: builtins.hashString "sha256" (builtins.toJSON v); # function-bearing -> the plane nulls the hash -> always-dirty
     };
 in
 {
-  inherit mkBuiltCtx trackedAttrs snapshot;
+  inherit mkBuiltCtx;
 
   resolve =
     {
@@ -56,8 +55,8 @@ in
     }:
     let
       sched = schedule.scheduleWith { inherit equations strataOrder; }; # Vogt gate + N-way stratum assert (throws propagate)
-      attributes = builtins.mapAttrs (_: eq: eq.compute) equations; # design §8-step3
-      eval = scope.eval { inherit roots attributes parseParent; }; # lib.fix demand fixpoint (delegate)
+      attributes = builtins.mapAttrs (_: eq: eq.compute) equations;
+      eval = scope.eval { inherit roots attributes parseParent; }; # demand fixpoint (delegate)
 
       nodeIds = builtins.attrNames eval.allNodes; # includes NTA-spawned children
       accessor = {
@@ -71,12 +70,12 @@ in
           name = id;
           value = {
             deps = scope.recordedDeps { inherit declaredEdges; } id; # eager, declared read-edges
-            hash = null; # DP4: populated only by the deferred cross-eval layer
+            hash = null; # a reuse layer across evaluations is what would populate this
           };
         }) nodeIds
       );
 
-      builtCtx = mkBuiltCtx strataOrder equations eval accessor; # DP4: LAZY field, unforced in v1 (cross-eval hook)
+      builtCtx = mkBuiltCtx eval accessor; # LAZY field, unforced on this path
     in
     # Force the schedule at resolve time (§8-step2): the Vogt gate + stratum assert live inside
     # buildSchedule's `if bad then throw else {…}`, so `seq sched` makes an invalid grammar throw
@@ -89,11 +88,16 @@ in
         trace
         roots
         equations
+        # The evaluator's attribute set, sealed alongside the equations it projects. It is here
+        # because the warm fold is the PLANE's now and the plane is owed no equation record: what a
+        # re-evaluation needs is the attribute functions, and deriving them inside the plane would
+        # hand it a vocabulary that belongs to this library's authoring surface.
+        attributes
         parseParent
         declaredEdges
         settings
         strataOrder
         ;
-      schedule = sched; # carry the resolved schedule (D12 edit-invariant)
+      schedule = sched; # carry the resolved schedule (edit-invariant)
     };
 }
