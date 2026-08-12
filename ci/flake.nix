@@ -1,6 +1,6 @@
 {
   inputs = {
-    gen.url = "github:sini/gen";
+    gen-harness.url = "github:sini/gen-harness";
     gen-scope.url = "github:sini/gen-scope";
     gen-graph.url = "github:sini/gen-graph";
     gen-memo.url = "github:sini/gen-memo";
@@ -14,7 +14,7 @@
 
   outputs =
     inputs@{
-      gen,
+      gen-harness,
       gen-scope,
       gen-graph,
       gen-memo,
@@ -31,7 +31,7 @@
         bind = gen-bind.lib;
       };
     in
-    gen.lib.mkCi {
+    gen-harness.lib.mkCi {
       inherit inputs;
       name = "gen-resolve";
       testModules = ./tests;
