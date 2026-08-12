@@ -5,6 +5,8 @@
   inputs = {
     gen-resolve.url = "github:sini/gen-resolve";
     gen-scope.url = "github:sini/gen-scope";
+    # The override cone is the incremental plane's. gen-resolve resolves; gen-memo decides reuse.
+    gen-memo.url = "github:sini/gen-memo";
     gen-aspects.url = "github:sini/gen-aspects";
     nixpkgs.url = "https://channels.nixos.org/nixos-unstable/nixexprs.tar.xz";
   };
@@ -13,6 +15,7 @@
     {
       gen-resolve,
       gen-scope,
+      gen-memo,
       gen-aspects,
       nixpkgs,
       ...
@@ -21,6 +24,7 @@
       result = import ./default.nix {
         genResolve = gen-resolve.lib;
         genScope = gen-scope.lib;
+        genMemo = gen-memo.lib;
         genAspects = gen-aspects.lib;
         lib = nixpkgs.lib;
       };

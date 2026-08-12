@@ -13,17 +13,20 @@ behaviours of the RAG schedule conductor:
   class of every host that imports it, delegated to `gen-scope.queryReverse`.
 - **`classKey` collapse (D8)** — hosts with identical resolved aspects collapse
   to one key (`web1` == `web2`); a different class splits.
-- **`override` reverse-cone re-derivation** — overriding one host re-derives only
-  its reverse cone; every other host keeps its prior resolved value
+- **`warmOverride` reverse-cone re-derivation** — overriding one host re-derives
+  only its reverse cone; every other host keeps its prior resolved value
   byte-identical. A *declared* cross-node read (`web1 → db1`) re-derives soundly
-  when the target changes.
+  when the target changes. The fold is `gen-memo`'s: deciding what may be reused
+  from a prior evaluation is the incremental plane's concern, and the plane takes
+  no evaluator dependency, so the evaluator is handed to it at the call.
 
 ## API used (current gen libraries)
 
 | library | symbols |
 | --- | --- |
-| `gen-resolve.lib` | `attr`, `reference`, `resolve`, `project`, `classKey`, `override` |
-| `gen-scope.lib` | `buildNodes`, `edge`, `queryReverse` (internal to `reference`) |
+| `gen-resolve.lib` | `attr`, `reference`, `resolve`, `project`, `classKey` |
+| `gen-memo.lib` | `warmOverride` |
+| `gen-scope.lib` | `buildNodes`, `edge`, `evalWarm`, `queryReverse` (internal to `reference`) |
 | `gen-aspects.lib` | `flatten`, `key` |
 
 Every gen flake output is a single `.lib` value (the old callable
@@ -45,5 +48,5 @@ $ nix eval .#result.checks --json | jq
 During local development against an unpublished `gen-resolve`, override the pin:
 
 ```console
-$ nix eval --override-input gen-resolve ../.. .#result.ok
+$ nix eval --override-input gen-resolve ../.. --override-input gen-memo ../../../gen-memo .#result.ok
 ```

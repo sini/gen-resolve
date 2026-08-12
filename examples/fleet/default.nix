@@ -1,10 +1,16 @@
 # §5.3 — the den fleet surface. Hosts resolve an aspect set (gen-aspects.flatten), read a
 # sibling's data across an `includes` edge (Hedin reference), collapse identical host-classes
-# under one classKey (D8), and an `override` of one host re-derives only its reverse cone —
-# every other host keeps its prior resolved value.
+# under one classKey, and a warm override of one host re-derives only its reverse cone — every
+# other host keeps its prior resolved value.
+#
+# THREE LIBRARIES, THREE CONCERNS, VISIBLE IN THE CALL. gen-resolve folds the equations and seals
+# the context; gen-scope evaluates; gen-memo decides what may be reused and hands the decision back
+# to the evaluator. The plane takes no evaluator dependency of its own, so the evaluator is passed
+# to it at the call — which is what `engine` below is.
 {
   genResolve,
   genScope,
+  genMemo,
   genAspects,
   lib,
 }:
@@ -15,8 +21,9 @@ let
     resolve
     project
     classKey
-    override
     ;
+  inherit (genMemo) warmOverride;
+  engine = { inherit (genScope) evalWarm; };
 
   # per-class aspect trees -> flat path-key registries (gen-aspects.flatten)
   classAspects = {
@@ -97,14 +104,14 @@ let
   };
 
   # override web2's class web -> db: web2 has no consumers, only web2 re-derives
-  ctx' = override ctx {
+  ctx' = warmOverride engine ctx {
     id = "web2";
     newDecls = {
       class = "db";
     };
   };
   # override db1's role: web1 DECLARES a read of db1, so web1's cone re-derives (the sound case)
-  ctxRole = override ctx {
+  ctxRole = warmOverride engine ctx {
     id = "db1";
     newDecls = {
       role = "primary";
