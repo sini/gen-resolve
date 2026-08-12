@@ -16,7 +16,7 @@ gen-resolve is **Class B**: it depends on five pure gen siblings (`gen-scope`, `
 - [Delegation — one instrument per sibling](#delegation--one-instrument-per-sibling)
 - [The static schedule (owned) vs runtime order (delegated)](#the-static-schedule-owned-vs-runtime-order-delegated)
 - [The convergence loop (owned)](#the-convergence-loop-owned)
-- [`override` — intra-eval incremental](#override--intra-eval-incremental)
+- [The warm fold has left](#the-warm-fold-has-left)
 - [`terminalBind` and `evalModules`](#terminalbind-and-evalmodules)
 - [The class KEY and its scope](#the-class-key-and-its-scope)
 - [API Reference](#api-reference)
@@ -38,8 +38,8 @@ surface:
 
 `resolve { roots; equations; parseParent; declaredEdges?; settings? }` folds these into a sealed
 `ResolveCtx`; read-only consumers (`project`, `edges`, `why`) query it; `materialize` forces the
-terminal `output-modules` attribute and binds via `gen-bind`. `override` / `warmResolve` do
-intra-eval incremental re-folding over the topological reverse cone.
+terminal `output-modules` attribute and binds via `gen-bind`. Intra-eval incremental re-folding is
+**no longer here** — see [The warm fold has left](#the-warm-fold-has-left).
 
 The **accessor pattern** is the boundary: gen-resolve hands each sibling a record of functions
 (`{ nodes; edges; parent; nodeData }`) describing structure, and asks questions about it. It never
@@ -178,26 +178,48 @@ circular value — the domain state is the only thing the ascent carries. The mo
 least-fixpoint reading of the ascent follows Arntzenius & Krishnaswami 2016 (Datafun); quiescence
 (`eq` reaching a fixed point ⇒ halt) is the Radul & Sussman 2009 propagator stability criterion.
 
-## `override` — intra-eval incremental
+## The warm fold has left
 
-`override` / `warmResolve` mark the **topological reverse cone** (`gen-graph.dependentsOf`) dirty
-and re-fold via `gen-scope.evalWarm`, serving the clean complement from the cold prior. The reverse
-cone is a **sound over-approximation** of the RTD 1983 AFFECTED set (RTD's AFFECTED is the cone
-*minus* the unchanged-value nodes) — not the exact-AFFECTED hash-cutoff. That choice is deliberate:
-exact-AFFECTED's detection pass would force (hash) the dominant per-host spine, and `evalWarm` would
-force it again — a literal 2× of the dominant cost intra-eval. The hash-cutoff refinement pays off
-only cross-invocation, where it moves to the deferred layer. **Edge-moves (topology changes) error
-in v1**; editing a non-root node also throws. `builtCtx` (the `gen-rebuild` oracle) is retained as a
-LAZY field — the deferred cross-eval hook — and is never forced by v1's
-`resolve` / `materialize` / `override`, so a cyclic node graph still resolves.
+`override` and `warmResolve` are **`gen-memo`'s `warmOverride` and `warmResolve`**, and the override
+cone that decided them went with them. Deciding what may be reused from a prior evaluation is the
+incremental plane's whole concern; this library resolves and schedules.
 
-> **Soundness (c).** Warm-serving is sound only if `declaredEdges` **over-declares** every
-> cross-node read (consumer→producer). Under-declare, and a consumer outside the declared cone is
-> served its *stale* prior value on override — `ci/tests/override-cross-node.nix` witnesses both
-> branches.
+```nix
+genMemo.warmOverride { inherit (genScope) evalWarm; } ctx { id = "web2"; newDecls = { class = "db"; }; }
+```
 
-> **`warmResolve` shape.** A *pure* batch override cannot carry the data-changes without their
-> payload, so v1 takes `{ edits }` (the `{ id = newDecls }` map); `changedIds = attrNames edits`.
+The evaluator is passed at the call because the plane declares no evaluator dependency: it decides
+for an evaluator it is handed. `resolve` seals `attributes` into the `ResolveCtx` for exactly this —
+what a re-evaluation needs is the attribute functions, and the equation record (with its `stratum`,
+`readsAttrs` and `kind`) stays here.
+
+**What changed in the move, beyond the address.** Warm-servability used to be decided by an
+attribute's **declared stratum** — `stratum != base`, computed twice, in `override.nix` and in
+`resolve.nix`. It is now the evaluator's own **resolutional vocabulary**: its attribute names minus
+the structural partition (`children`, `derived-children`, `edges-*`, `includes`). A derived
+classifier governs over a declared one, and the derivation was available. Two consequences are worth
+stating rather than discovering:
+
+- **Reuse is wider.** Under the declared filter a plain `synthesized` attribute defaulted to the base
+  stratum and was **never** warm-served. Measured on this repository's own former `ci/tests/override.nix`
+  fixture, the tracked set was `[ ]` — that suite warm-served nothing at all. Under the derived
+  classifier those same attributes are reusable.
+- **Structure is recomputed more.** The partition now covers the whole `edges-*` family and
+  `includes`, not two literal names, so a warm evaluation pays edge-set recomputation it did not pay
+  before. That is a cost fact, not a correctness fact: an edge set *is* the labelled reachability
+  relation, and the reason structure is always recomputed applies to it exactly.
+
+`stratumOf` survives the supersession in its **other** role — assigning the strata `schedule.nix`
+orders, with the ABW gate — and travels with the schedule wherever the ordering work lands.
+
+> **Soundness (c) travelled too.** Warm-serving is sound only if `declaredEdges` **over-declares**
+> every cross-node read (consumer→producer). Under-declare, and a consumer outside the declared cone
+> is served its *stale* prior value — `gen-memo`'s `ci/tests/warm-override-cross-node.nix` witnesses
+> both branches.
+
+`builtCtx` remains a LAZY `ResolveCtx` field that the cold path never forces, so a cyclic node graph
+still resolves. Its recompute now projects the evaluator's resolutional vocabulary rather than the
+declared-stratum set.
 
 ## `terminalBind` and `evalModules`
 
@@ -326,16 +348,15 @@ materialize    : ResolveCtx → id → config # forces "output-modules" (the onl
 materializeAll : ResolveCtx → class → { id → config }
 ```
 
-### Intra-eval incremental
+### Intra-eval incremental — not on this surface
 
 ```
-override    : ResolveCtx → { id; newDecls } → ResolveCtx  # dirty = [id] ∪ dependentsOf id
-warmResolve : ResolveCtx → { edits }        → ResolveCtx  # batch; changedIds = attrNames edits
+gen-memo.warmOverride : { evalWarm } → ResolveCtx → { id; newDecls } → ResolveCtx
+gen-memo.warmResolve  : { evalWarm } → ResolveCtx → { edits }        → ResolveCtx
 ```
 
-`override` splices a decl, marks the reverse cone (`gen-graph.dependentsOf`) dirty, and re-folds via
-`gen-scope.evalWarm`, serving the clean complement from the prior. Edge-moves throw; non-root edits
-throw.
+Both take the `ResolveCtx` this library seals and hand it back re-evaluated. Edge-moves throw;
+non-root edits throw. See [The warm fold has left](#the-warm-fold-has-left).
 
 ### Fleet KEY
 
@@ -378,11 +399,11 @@ nix build ./ci#formatter.x86_64-linux      # then run ./result/bin/* . to format
 ```
 
 Pre-publish, append `--override-input gen-resolve <path-to-this-repo>` so the CI resolves the local
-tree. There are **58 tests across 13 suites** (`equation`, `schedule`, `resolve`, `materialize`,
-`cascade`, `override`, `override-cross-node`, `warm-resolve`, `classkey`, `contract`, `reference`,
-`conformance`, `purity`) — the `conformance` suite is the central oracle (demand-order ==
-from-scratch toposort, the two schedule gates throw, NTA grammar-growth, override byte-identical to
-pre-applied resolve).
+tree. There are **58 tests across 10 suites** (`equation`, `schedule`, `resolve`, `materialize`,
+`cascade`, `classkey`, `contract`, `reference`, `conformance`, `purity`) — the `conformance` suite is
+the central oracle (demand-order == from-scratch toposort, the two schedule gates throw, NTA
+grammar-growth). The `override`, `override-cross-node` and `warm-resolve` suites moved to `gen-memo`
+with the fold they are about, and `conformance`'s override property moved with them.
 
 ## Theoretical Foundations
 
