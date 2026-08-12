@@ -10,7 +10,7 @@
     gen-prelude.url = "github:sini/gen-prelude";
     gen-scope.url = "github:sini/gen-scope";
     gen-graph.url = "github:sini/gen-graph";
-    gen-rebuild.url = "github:sini/gen-rebuild";
+    gen-memo.url = "github:sini/gen-memo";
     gen-algebra.url = "github:sini/gen-algebra";
     gen-bind.url = "github:sini/gen-bind";
   };
@@ -19,7 +19,7 @@
     {
       gen-scope,
       gen-graph,
-      gen-rebuild,
+      gen-memo,
       gen-algebra,
       gen-bind,
       ...
@@ -28,7 +28,7 @@
       lib = import ./lib {
         scope = gen-scope.lib;
         graph = gen-graph.lib;
-        rebuild = gen-rebuild.lib;
+        memo = gen-memo.lib;
         algebra = gen-algebra.lib;
         bind = gen-bind.lib;
       };

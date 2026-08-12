@@ -6,7 +6,7 @@ let
   edges = ctx: id: (ctx.trace.${id} or { deps = [ ]; }).deps;
   # why :: ResolveCtx -> { id; attr } -> [Dep]  (design §6). NAME-only static provenance over the
   # declared trace: the declared node-edges x the attr's readsAttrs. (Cutoff-aware WhyResult is
-  # gen-rebuild.why over a BuiltCtx — deferred with the cross-eval layer; see the open items note.)
+  # the plane's `why` over a BuiltCtx — deferred with the cross-eval layer; see the open items note.)
   why =
     ctx:
     { id, attr }:

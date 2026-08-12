@@ -1,5 +1,5 @@
 # Intra-eval incremental override (design §9; DP3/DP6). isClean = the topological reverse cone
-# (gen-graph.dependentsOf) — NOT gen-rebuild.affectedSet (DP6): exact-AFFECTED hash-detection would
+# (gen-graph.dependentsOf) — NOT the plane's affectedSet (DP6): exact-AFFECTED hash-detection would
 # force (hash) the dominant per-host spine and evalWarm would force it again — a literal 2× of the
 # dominant cost intra-eval — and only pays off cross-eval (deferred). gen-scope.evalWarm is the sole
 # recompute engine.
@@ -11,7 +11,7 @@
 {
   scope,
   graph,
-  rebuild,
+  memo,
 }:
 let
   edgeKeys = [
@@ -57,7 +57,7 @@ let
   # DP4: fresh LAZY builtCtx over (eval', accessor') — the cross-eval hook, unforced in v1.
   mkBuiltCtx' =
     ctx: eval': accessor':
-    rebuild.build {
+    memo.build {
       accessor = accessor';
       recompute =
         _acc: _store: nid:
@@ -136,7 +136,7 @@ in
     { id, newDecls }:
     assert
       !(changesTopology (ctx.roots.${id}.decls or { }) newDecls)
-      || throw "gen-resolve.override: edge-move on '${id}' (topology change) — errors in v1; route to gen-rebuild.applyEdgeDelta in v2 (D14).";
+      || throw "gen-resolve.override: edge-move on '${id}' (topology change) — errors in v1; route to the plane's applyEdgeDelta in v2 (D14).";
     spliceAndWarm ctx { ${id} = newDecls; };
 
   # warmResolve — batch override (Task 8): guard each id, one union cone, one evalWarm. spliceAndWarm

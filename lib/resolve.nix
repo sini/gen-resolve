@@ -2,7 +2,7 @@
 # THEORY: Mokhov 2018 §4.1 (Nix laziness = the runtime schedule); the static schedule is Task 2/3.
 {
   scope,
-  rebuild,
+  memo,
   schedule,
 }:
 let
@@ -28,18 +28,18 @@ let
       }) (trackedAttrs strataOrder equations)
     );
 
-  # DP4: the gen-rebuild oracle over a given eval + accessor. Built per (eval, accessor); its recompute
+  # DP4: the incremental plane's oracle over a given eval + accessor. Built per (eval, accessor); its recompute
   # reads its OWN paired eval, so its hashes are correct for the cross-eval detection use. It is a LAZY
   # ResolveCtx field — NEVER forced by v1 resolve/materialize/override (which use the topological cone,
-  # DP3), so gen-rebuild's eager node-cycle check never trips. Activated only by the cross-invocation layer.
+  # DP3), so the plane's eager node-cycle check never trips. Activated only by the cross-invocation layer.
   mkBuiltCtx =
     strataOrder: equations: ev: accessor:
-    rebuild.build {
+    memo.build {
       inherit accessor;
       recompute =
         _acc: _store: id:
         snapshot strataOrder equations ev id; # reads its paired eval (correct for cross-eval)
-      hashOf = v: builtins.hashString "sha256" (builtins.toJSON v); # function-bearing -> gen-rebuild nulls -> always-dirty
+      hashOf = v: builtins.hashString "sha256" (builtins.toJSON v); # function-bearing -> the plane nulls the hash -> always-dirty
     };
 in
 {
