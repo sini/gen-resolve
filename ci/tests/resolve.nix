@@ -54,7 +54,7 @@ let
 in
 {
   flake.tests.resolve = {
-    # demanded leaf value flows from decls (project == eval.get; project itself is Task 5)
+    # demanded leaf value flows from decls (project == eval.get)
     test-project-leaf = {
       expr = ctx.eval.get "child" "self-v";
       expected = 1;
@@ -64,24 +64,36 @@ in
       expr = ctx.eval.get "parent" "plus-one";
       expected = 11;
     };
-    # sealed 10-field ResolveCtx (design §3)
+    # The sealed context, asserted as an EXACT SET rather than as presence.
+    #
+    # WHY THE FORM CHANGED. This cell was `builtins.all (k: ctx ? ${k}) [ …ten names… ]` — a presence
+    # check, satisfied by any context containing those ten and silent about everything else. The
+    # context grew to eleven when `strataOrder` was added and to twelve when the warm fold's
+    # departure put `attributes` on it, and the cell passed unchanged through both: a sealed-surface
+    # test that under-enumerates its surface passes while the seal is broken. Three prose sites
+    # drifted behind it for exactly that reason — nothing ever reddened.
+    #
+    # Compared on NAMES. `attrNames` returns them sorted, so a widening, a narrowing, or a rename
+    # all fail this cell, which is the arming the sibling plane's export pin already had.
     test-ctx-sealed = {
-      expr = builtins.all (k: ctx ? ${k}) [
-        "eval"
+      expr = builtins.attrNames ctx;
+      expected = [
         "accessor"
+        "attributes"
         "builtCtx"
-        "schedule"
-        "trace"
-        "roots"
-        "equations"
-        "parseParent"
         "declaredEdges"
+        "equations"
+        "eval"
+        "parseParent"
+        "roots"
+        "schedule"
         "settings"
+        "strataOrder"
+        "trace"
       ];
-      expected = true;
     };
-    # DP4: builtCtx lazy — a resolve with a CYCLIC declaredEdges would make gen-rebuild.build's
-    # node-cycle check throw IF builtCtx were forced; cold resolve + project must still succeed.
+    # builtCtx is lazy — a resolve with a CYCLIC declaredEdges would make the plane's node-cycle
+    # check throw IF builtCtx were forced; cold resolve + project must still succeed.
     test-cold-ignores-builtctx = {
       expr =
         let

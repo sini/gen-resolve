@@ -319,15 +319,23 @@ nodes that import this one (Hedin & Magnusson 2003), delegated to `gen-scope.que
 ### `resolve` and the `ResolveCtx`
 
 ```
-resolve : { roots; equations; parseParent; declaredEdges?; settings? } → ResolveCtx
+resolve : { roots; equations; parseParent; declaredEdges?; settings?; strataOrder? } → ResolveCtx
 ```
 
-Cold fold. Returns a sealed 10-field `ResolveCtx = { eval; accessor; builtCtx; schedule; trace; roots; equations; parseParent; declaredEdges; settings }`.
-Folds `equations.compute` into `gen-scope.eval` (`lib.fix`); forces the schedule (`_scheduleWith` at
+Cold fold. Returns a sealed **12-field** `ResolveCtx = { accessor; attributes; builtCtx; declaredEdges; equations; eval; parseParent; roots; schedule; settings; strataOrder; trace }`.
+
+> **The count is measured, and the phrasing it replaces was wrong for longer than one field.** This
+> line claimed a sealed context of ten and enumerated ten. `strataOrder` was missing from it when
+> that field was added, `attributes` when the warm fold left, and the sealed test could not say so
+> because it asserted PRESENCE of ten names rather than the exact set — so it passed unchanged at
+> ten, eleven and twelve. `test-ctx-sealed` now compares `builtins.attrNames ctx` against the exact
+> list, which is the arming `gen-memo`'s `test-lib-exports-the-plane` already had.
+
+Folds `equations.compute` into `gen-scope.eval`; forces the schedule (`_scheduleWith` at
 `strataOrder`) once via `seq`.
 `accessor.edges = declaredEdges` is the consumer→producer edge and MUST over-declare (soundness
 condition (c)). `trace.<id>.deps` is the eager recorded read-edge set; `builtCtx` is a LAZY
-`gen-rebuild.build` hook, never forced by v1.
+`gen-memo.build` hook, never forced on the cold path.
 
 ### Consumer contract (read-only)
 
