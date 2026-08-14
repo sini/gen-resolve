@@ -2,11 +2,11 @@
 
 [![CI](https://github.com/sini/gen-resolve/actions/workflows/ci.yml/badge.svg)](https://github.com/sini/gen-resolve/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT) [![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-pink?logo=github)](https://github.com/sponsors/sini)
 
-Pure-Nix, `nixpkgs.lib`-free, demand-driven **higher-order reference-attribute-grammar (RAG) evaluator** over algebraic scope graphs. `resolve` folds a set of semantic equations into a demand fixpoint; `materialize` forces the terminal and binds the result.
+Pure-Nix, `nixpkgs.lib`-free **semantic-equation vocabulary and static attribute-dependency schedule** for higher-order reference attribute grammars over algebraic scope graphs. You declare equations here and build a schedule over their declared reads; `gen-scope.foldEquations` folds them into a demand fixpoint; `materialize` forces the terminal and binds the result.
 
-gen-resolve is the **conductor**. It owns exactly two things: the static attribute-dependency *schedule* (Knuth 1968 dependency graph + the Vogt 1989 HOAG well-definedness gate + the N-way stratified partition assert, default two-stratum) and the **convergence loop** — the cold/warm Kleene ascent (Sloane 2010 §2.2) that resolves a mutually-recursive `circular` region. Every actual computation is a hard-boundary delegation to a pure sibling: gen-resolve supplies accessor *functions*, never concrete node maps, and domain knowledge (NixOS, aspects, den's attributes) stays in the consumer. Runtime evaluation order is demand — Nix laziness inside `gen-scope.eval`'s `lib.fix` (Mokhov 2018 §4.1); gen-resolve never re-orders thunks.
+gen-resolve owns the static attribute-dependency *schedule* (Knuth 1968 dependency graph + the Vogt 1989 HOAG well-definedness gate + the N-way stratified partition assert, default two-stratum) and the equation vocabulary the schedule is built over. **The cold fold has left**: folding those equations into a sealed context is `gen-scope.foldEquations`, which takes a schedule as an argument and reads its equations off it, so a caller cannot pair a schedule with equations it was not built from. Every actual computation is a hard-boundary delegation to a pure sibling: gen-resolve supplies accessor *functions*, never concrete node maps, and domain knowledge (NixOS, aspects, den's attributes) stays in the consumer. Runtime evaluation order is demand — Nix laziness inside `gen-scope.eval`'s `lib.fix` (Mokhov 2018 §4.1); gen-resolve never re-orders thunks.
 
-gen-resolve is **Class B**: it depends on five pure gen siblings (`gen-scope`, `gen-graph`, `gen-rebuild`, `gen-algebra`, `gen-bind`). `gen-prelude` is a transitive dependency only — each sibling carries its own; the `.lib` surface takes no direct prelude. The library (`lib/`) is `nixpkgs.lib`-free (enforced by `ci/tests/purity.nix`); nixpkgs is pulled only in `ci/` for the test harness and the evalModules-equivalence oracle.
+gen-resolve is **Class B**: it declares five pure gen siblings (`gen-scope`, `gen-graph`, `gen-memo`, `gen-algebra`, `gen-bind`), of which `lib/` now reads four — the `memo` formal went unread when the cold fold left, and retiring it is a change to this library's construction signature rather than part of that move. `gen-prelude` is a transitive dependency only — each sibling carries its own; the `.lib` surface takes no direct prelude. The library (`lib/`) is `nixpkgs.lib`-free (enforced by `ci/tests/purity.nix`); nixpkgs is pulled only in `ci/` for the test harness and the evalModules-equivalence oracle.
 
 ## Table of Contents
 
@@ -36,10 +36,11 @@ surface:
 | `cascade { name; channel; strata?; combine?; acc? }` | `cascade` | `["imports"]` | a D>I>P strata fold over the neron-ordered import layers (Neron 2015 §2); `combine ∈ {replace, append, recursive}` unconditional, or `semilattice-set` (JSL/ACI) iff `acc = true` |
 | `reference { name; select; target? }` | `reference` | `["imports"]` | a forward reference attribute (nearest binding, Hedin 2000) or a reverse `neededBy` gather (Hedin & Magnusson 2003) |
 
-`resolve { roots; equations; parseParent; declaredEdges?; settings? }` folds these into a sealed
-`ResolveCtx`; read-only consumers (`project`, `edges`, `why`) query it; `materialize` forces the
-terminal `output-modules` attribute and binds via `gen-bind`. Intra-eval incremental re-folding is
-**no longer here** — see [The warm fold has left](#the-warm-fold-has-left).
+`gen-scope.foldEquations { roots; parseParent; schedule; declaredEdges?; settings? }` folds these
+into a sealed context, the `schedule` being `_scheduleWith { equations = …; }` built here; read-only
+consumers (`project`, `edges`, `why`) query that context; `materialize` forces the terminal
+`output-modules` attribute and binds via `gen-bind`. Intra-eval incremental re-folding is **no longer
+here** — see [The warm fold has left](#the-warm-fold-has-left).
 
 The **accessor pattern** is the boundary: gen-resolve hands each sibling a record of functions
 (`{ nodes; edges; parent; nodeData }`) describing structure, and asks questions about it. It never
@@ -94,14 +95,14 @@ let
   resolve = import ./path/to/gen-resolve/lib {
     scope   = gen-scope.lib;
     graph   = gen-graph.lib;
-    rebuild = gen-rebuild.lib;
+    memo    = gen-memo.lib;
     algebra = gen-algebra.lib;
     bind    = gen-bind.lib;
   };
 in
-resolve.resolve {
+gen-scope.lib.foldEquations {
   roots        = myScopeNodes;         # from gen-scope.buildNodes
-  equations    = { /* attr/nta/cascade/reference */ };
+  schedule     = resolve._scheduleWith { equations = { /* attr/nta/cascade/reference */ }; };
   parseParent  = id: myParent id;
   declaredEdges = id: myEdges id;      # consumer→producer, MUST over-declare
 }
@@ -122,8 +123,8 @@ Every computation is a hard-boundary delegation. gen-resolve owns only the sched
 
 ## The static schedule (owned) vs runtime order (delegated)
 
-`resolve` forces the schedule once — `_scheduleWith` at the resolve's `strataOrder` (default
-two-stratum), carried edit-invariant in the `ResolveCtx`. It:
+The schedule is built once — `_scheduleWith` at the caller's `strataOrder` (default two-stratum) —
+and the fold `seq`-forces it and carries it edit-invariant in the sealed context. It:
 
 - builds the Knuth attribute-dependency graph (`a → b` iff `b ∈ readsAttrs a`);
 - runs the **Vogt well-definedness gate**: a cyclic SCC is admissible iff every member is a
@@ -138,17 +139,18 @@ Runtime order is never scheduled by gen-resolve — it is Nix demand inside the 
 
 ### Stratum order (N-way schedule)
 
-`resolve` takes an optional `strataOrder` — the declared total order of strata, index 0 = the base
-graph-shaping stratum (the schedule runs inside `resolve`). The static schedule enforces the
+`_scheduleWith` takes an optional `strataOrder` — the declared total order of strata, index 0 = the
+base graph-shaping stratum. It is the schedule's own argument and is not carried on the sealed
+context: no reader anywhere asked the context for it. The static schedule enforces the
 **stratified partition** (Apt–Blair–Walker 1988; van Antwerpen 2016 §4.3): a rule may read attributes
 at strata **≤ its own** (positive dependency); reading a **strictly-later** stratum is a schedule
 error. `terminal` is the materialization sink — exempt (it may read any stratum). Default order:
 `[ "structural" "resolution" ]`, under which the schedule reproduces the shipped two-stratum
 discipline (a structural graph-builder may not depend on a resolution result).
 
-- `resolve { …, strataOrder ? [ "structural" "resolution" ] }` — the PUBLIC N-way entry.
-- `_scheduleWith` / `_buildSchedule` — the underlying schedule builders, exposed `_`-prefixed as
-  internal test helpers only (see the API Reference).
+- `_scheduleWith { equations; strataOrder ? [ "structural" "resolution" ] }` — the N-way entry, and
+  the producer of the value `gen-scope.foldEquations` takes.
+- `_buildSchedule` — the same builder at the default order.
 
 Every non-`terminal` attribute's declared stratum must appear in `strataOrder` (the unknown-stratum
 guard throws NAMED at schedule time).
@@ -189,8 +191,8 @@ genMemo.warmOverride { inherit (genScope) evalWarm; } ctx { id = "web2"; newDecl
 ```
 
 The evaluator is passed at the call because the plane declares no evaluator dependency: it decides
-for an evaluator it is handed. `resolve` seals `attributes` into the `ResolveCtx` for exactly this —
-what a re-evaluation needs is the attribute functions, and the equation record (with its `stratum`,
+for an evaluator it is handed. The fold seals `attributes` into the context for exactly this — what a
+re-evaluation needs is the attribute functions, and the equation record (with its `stratum`,
 `readsAttrs` and `kind`) stays here.
 
 **What changed in the move, beyond the address.** Warm-servability used to be decided by an
@@ -217,9 +219,12 @@ orders, with the ABW gate — and travels with the schedule wherever the orderin
 > is served its *stale* prior value — `gen-memo`'s `ci/tests/warm-override-cross-node.nix` witnesses
 > both branches.
 
-`builtCtx` remains a LAZY `ResolveCtx` field that the cold path never forces, so a cyclic node graph
-still resolves. Its recompute now projects the evaluator's resolutional vocabulary rather than the
-declared-stratum set.
+The plane's memo context is **no longer a field of the sealed context at all**. Building it inside the
+evaluator would install the plane inside the thing the plane is defined against, so a caller that
+wants one composes it — `gen-memo.build` over the context's own accessor, four lines, which is the
+direction this seam already runs. `ci/tests/resolve.nix` is that composition and the ecosystem's only
+site that forces `build`. A cyclic node graph still resolves on the cold path, for the same reason it
+always did: nothing there walks the declared edges.
 
 ## `terminalBind` and `evalModules`
 
@@ -316,13 +321,13 @@ the nearest binding across imports (Hedin 2000); `target = "neededBy"` reverse-g
 nodes that import this one (Hedin & Magnusson 2003), delegated to `gen-scope.queryReverse`. Stratum
 `resolution`.
 
-### `resolve` and the `ResolveCtx`
+### The cold fold and its sealed context — `gen-scope`'s
 
 ```
-resolve : { roots; equations; parseParent; declaredEdges?; settings?; strataOrder? } → ResolveCtx
+gen-scope.foldEquations : { roots; parseParent; schedule; declaredEdges?; settings? } → ResolveCtx
 ```
 
-Cold fold. Returns a sealed **12-field** `ResolveCtx = { accessor; attributes; builtCtx; declaredEdges; equations; eval; parseParent; roots; schedule; settings; strataOrder; trace }`.
+Returns a sealed **10-field** `ResolveCtx = { accessor; attributes; declaredEdges; equations; eval; parseParent; roots; schedule; settings; trace }`. There is no `equations` formal — they are read off the schedule, so the seal cannot carry a schedule nobody folded — and no `strataOrder` field, which had no reader in any repository measured.
 
 > **The count is measured, and the phrasing it replaces was wrong for longer than one field.** This
 > line claimed a sealed context of ten and enumerated ten. `strataOrder` was missing from it when
@@ -331,11 +336,10 @@ Cold fold. Returns a sealed **12-field** `ResolveCtx = { accessor; attributes; b
 > ten, eleven and twelve. `test-ctx-sealed` now compares `builtins.attrNames ctx` against the exact
 > list, which is the arming `gen-memo`'s `test-lib-exports-the-plane` already had.
 
-Folds `equations.compute` into `gen-scope.eval`; forces the schedule (`_scheduleWith` at
-`strataOrder`) once via `seq`.
+Folds `equations.compute` into `gen-scope.eval`; `seq`-forces the schedule the caller handed it, so a
+gate failure throws at the call and not lazily on a first read.
 `accessor.edges = declaredEdges` is the consumer→producer edge and MUST over-declare (soundness
-condition (c)). `trace.<id>.deps` is the eager recorded read-edge set; `builtCtx` is a LAZY
-`gen-memo.build` hook, never forced on the cold path.
+condition (c)). `trace.<id>.deps` is the eager recorded read-edge set.
 
 ### Consumer contract (read-only)
 
@@ -374,14 +378,8 @@ classKey : ResolveCtx → id → sha256-string  # conservative reuse-narrowing d
 
 ### Schedule
 
-The **public** N-way knob is `resolve`'s `strataOrder` argument — the schedule runs inside `resolve`:
-
-```
-resolve : { …, strataOrder ? [ "structural" "resolution" ] } → ResolveCtx
-```
-
-The schedule builders themselves are exposed on the `.lib` `_`-prefixed, as **internal**,
-test-only helpers (not public API):
+The N-way knob is `_scheduleWith`'s `strataOrder` argument. The schedule builders are exposed on the
+`.lib` `_`-prefixed:
 
 ```
 _scheduleWith : { equations; strataOrder ? [ "structural" "resolution" ] } → Schedule
@@ -390,10 +388,9 @@ _buildSchedule : equations → Schedule   # = _scheduleWith at the default order
 
 In `lib/schedule.nix` these are `scheduleWith` / `buildSchedule`; the `.lib` re-exports them
 `_`-prefixed. `_scheduleWith` is the N-way schedule builder (Knuth graph + Vogt gate + the stratified
-partition assert over `strataOrder`); `_buildSchedule` is it at the default two-stratum order.
-`resolve` forces the schedule once (via `seq`) to run the well-definedness gate and stratum
-partition; the `_`-prefixed pair is surfaced only so the `schedule` suite can exercise the gate in
-isolation. Consumers pass `strataOrder` through `resolve` rather than calling these directly.
+partition assert over `strataOrder`); `_buildSchedule` is it at the default two-stratum order. The
+fold `seq`-forces whichever of them built its argument, so the well-definedness gate and the stratum
+partition run at the call; the `schedule` suite exercises the gate in isolation.
 
 ## Testing
 
@@ -407,10 +404,11 @@ nix build ./ci#formatter.x86_64-linux      # then run ./result/bin/* . to format
 ```
 
 Pre-publish, append `--override-input gen-resolve <path-to-this-repo>` so the CI resolves the local
-tree. There are **58 tests across 10 suites** (`equation`, `schedule`, `resolve`, `materialize`,
+tree. There are **53 tests across 10 suites** (`equation`, `schedule`, `resolve`, `materialize`,
 `cascade`, `classkey`, `contract`, `reference`, `conformance`, `purity`) — the `conformance` suite is
 the central oracle (demand-order == from-scratch toposort, the two schedule gates throw, NTA
-grammar-growth). The `override`, `override-cross-node` and `warm-resolve` suites moved to `gen-memo`
+grammar-growth), and the `resolve` suite is now the plane composition and the one site that forces
+`gen-memo.build`. The `override`, `override-cross-node` and `warm-resolve` suites moved to `gen-memo`
 with the fold they are about, and `conformance`'s override property moved with them.
 
 ## Theoretical Foundations

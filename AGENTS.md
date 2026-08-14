@@ -2,19 +2,21 @@
 
 ## Scope
 
-Demand-driven higher-order RAG evaluator over algebraic scope graphs: folds a set of semantic equations (`attr` / `nta` / `cascade` / `reference`) into a sealed `ResolveCtx` through `gen-scope.eval`, owning the static attribute-dependency schedule and the **cold** fold — every computation is delegated to a sibling.
+The authoring vocabulary for semantic equations (`attr` / `nta` / `cascade` / `reference`) and the static attribute-dependency schedule built over their declared reads — the Knuth circularity test and the N-way stratum assert. Every computation is delegated to a sibling.
+
+**The cold fold has LEFT.** Folding those equations into a sealed context is `gen-scope`'s `foldEquations`, which takes a schedule as an argument and reads its equations off it — the fold was always the evaluator's CALLER, and the two calls it made across that boundary are local ones there. `_scheduleWith` is the sole producer of the value it takes, which is why a caller of the fold still reaches for this library.
 
 **The warm fold has LEFT.** `override` and `warmResolve` are `gen-memo`'s `warmOverride` and `warmResolve`, and the override cone that decided them went too. What the plane decides is REUSE, and it now decides it from the evaluator's own resolutional partition rather than from an attribute's declared stratum — so `_trackedAttrs` is gone from this surface and `trackedFor` is gone from the ecosystem. `stratumOf` survives in its **other** role, assigning the strata the schedule orders, and travels with `schedule.nix` wherever the ordering work lands.
 
 ## Not this library's job
 
-Quoted text is the owner's own `flake.nix` `description` field, verbatim. `lib/default.nix` takes exactly five sibling values (`scope`, `graph`, `memo`, `algebra`, `bind`); `git grep -c <token> -- lib/` returns zero files for `gen-select`, `gen-schema`, `gen-aspects`, `gen-types`, `gen-merge`, `gen-flake`, `gen-dispatch`, `gen-pipe`, `nixpkgs`, `evalModules`, `mkOption` (positive control, same instrument, same run: `gen-resolve` 5 files, `scope.` 2, `graph.` 1, `memo.` 1, `algebra.` 1, `bind.` 1 — every count fell with the warm fold's departure, which is what a re-measurement is for).
+Quoted text is the owner's own `flake.nix` `description` field, verbatim. `lib/default.nix` takes five sibling values (`scope`, `graph`, `memo`, `algebra`, `bind`); `git grep -c <token> -- lib/` returns zero files for `gen-select`, `gen-schema`, `gen-aspects`, `gen-types`, `gen-merge`, `gen-flake`, `gen-dispatch`, `gen-pipe`, `nixpkgs`, `evalModules`, `mkOption` (positive control, same instrument, same run: `gen-resolve` 5 files, `scope.` 1, `graph.` 1, `algebra.` 1, `bind.` 1). ★ **`memo.` is now 0 files and the formal is unread** — the plane call left with the cold fold and did not follow it into the evaluator, so it is composed by callers holding both libraries. Retiring the parameter is a change to this library's construction signature and its declared sibling set, and is a disposition of its own.
 
 | Responsibility | Owner |
 |---|---|
 | The demand fixpoint itself — `lib.fix` memoization, `eval` / `evalWarm`, `circular` Kleene ascent, `query` / `queryReverse` / `collectionAttr` / `recordedDeps` | `gen-scope` — "gen-scope: demand-driven attribute grammar evaluator over algebraic scope graphs" |
 | Graph topology — SCC condensation, `reachableFrom`, `dependentsOf` | `gen-graph` — "gen-graph: accessor-based graph query combinators" |
-| Dirtiness / AFFECTED-set detection, and the WARM FOLD ITSELF (`build`, `affectedSet`, `warmOverride`, `warmResolve`) | `gen-memo` — the incremental plane, which the rebuilder core retired into. The warm fold and the override cone now live there too; `builtCtx` remains here as a lazy field the cold path never forces |
+| Dirtiness / AFFECTED-set detection, and the WARM FOLD ITSELF (`build`, `affectedSet`, `warmOverride`, `warmResolve`) | `gen-memo` — the incremental plane, which the rebuilder core retired into. The warm fold and the override cone live there too, and the memo context the cold fold used to build is now composed by a caller holding both libraries: `ci/tests/resolve.nix` is that caller and the ecosystem's only site that FORCES `build` |
 | Record-layer folding (`record.foldLayersTraced`) that `cascade` calls | `gen-algebra` — "gen-algebra: pure Nix algebra — search monad, records, intensional functions, either" |
 | Injecting external args into modules (`wrapAll`) | `gen-bind` — "gen-bind: module binding with external arguments for Nix" |
 | Choosing a winner among matched rules — the dispatch STEP | `gen-dispatch` — "gen-dispatch: relational rule dispatch over ordered groups (the dispatch STEP)". README §"The convergence loop" shows the LOOP composing with `dispatch` by threading domain state; gen-resolve holds no rule algebra |
@@ -29,7 +31,7 @@ Quoted text is the owner's own `flake.nix` `description` field, verbatim. `lib/d
 
 ## Exports
 
-Entry: `inputs.gen-resolve.lib` (flake) or `import ./lib { scope; graph; rebuild; algebra; bind; }`. The root `default.nix` is a shim that derives all six deps from the pinned `flake.lock` via `fetchTree` and calls `import ./lib`. Flat namespace — no nested groups.
+Entry: `inputs.gen-resolve.lib` (flake) or `import ./lib { scope; graph; memo; algebra; bind; }`. The root `default.nix` is a shim that derives those deps from the pinned `flake.lock` via `fetchTree` and calls `import ./lib`. Flat namespace — no nested groups.
 
 **Equation constructors** — `lib/equation.nix`. Each yields `Equation = { name; kind; compute; readsAttrs; stratum }` (5 keys, measured).
 
@@ -40,11 +42,7 @@ Entry: `inputs.gen-resolve.lib` (flake) or `import ./lib { scope; graph; rebuild
 | `cascade` | `{ name; channel; strata ? { }; combine ? "replace"; acc ? false } -> Equation` — fixes `kind = "cascade"`, `readsAttrs = [ "imports" ]`, `stratum = "resolution"` |
 | `reference` | `{ name; select; target ? "includes" } -> Equation` — fixes `kind = "reference"`, `readsAttrs = [ "imports" ]`, `stratum = "resolution"` |
 
-**Cold fold** — `lib/resolve.nix`
-
-| Export | Signature |
-|---|---|
-| `resolve` | `{ roots; equations; parseParent; declaredEdges ? (_: [ ]); settings ? { }; strataOrder ? [ "structural" "resolution" ] } -> ResolveCtx` |
+**Cold fold — NOT HERE ANY MORE.** It is `gen-scope`'s `foldEquations`, whose argument set is `{ roots; parseParent; schedule; declaredEdges ? (_: [ ]); settings ? { } }`. There is no `equations` formal — they are read off the schedule, so a caller cannot pair a schedule with equations it was not built from — and no `strataOrder` formal, because the order is `_scheduleWith`'s and is sealed nowhere. Build the schedule here, hand it there.
 
 **Read-only consumers** — `lib/contract.nix`
 
@@ -74,7 +72,7 @@ longer decided from a declared stratum — it is the evaluator's own resolutiona
 |---|---|
 | `classKey` | `ctx -> id -> sha256-string` — digests the hardcoded attribute name `"resolved-aspects"` |
 
-**Schedule builders**, `_`-prefixed but on the public `.lib` — `lib/schedule.nix`, `lib/resolve.nix`
+**Schedule builders**, `_`-prefixed but on the public `.lib` — `lib/schedule.nix`
 
 | Export | Signature |
 |---|---|
@@ -84,9 +82,9 @@ longer decided from a declared stratum — it is the evaluator's own resolutiona
 `_trackedAttrs` is **gone**. It computed the warm-served set from the declared stratum, one of the
 two filters the derived classifier superseded; the other was `trackedFor` inside the warm fold.
 
-**Returned shapes** (consumed, not exported). `ResolveCtx` carries 12 fields, measured by `attrNames`: `accessor`, `attributes`, `builtCtx`, `declaredEdges`, `equations`, `eval`, `parseParent`, `roots`, `schedule`, `settings`, `strataOrder`, `trace`. `attributes` is the newest and is there for the plane: the warm fold re-evaluates and needs the attribute FUNCTIONS, while the equation record — `stratum`, `readsAttrs`, `kind` — is this library's authoring surface and does not travel. `ci/tests/resolve.nix` `test-ctx-sealed` now asserts that exact set — `builtins.attrNames ctx` against the twelve names, not presence of ten — so this sheet's count and the cell's cannot drift apart again. **They had drifted three ways, and the reason is worth keeping** (`den-hoag-lrrc`): the cell was a presence check, which passes for any context containing its ten names and says nothing about the rest, so it stayed green across ten, eleven (`strataOrder`) and twelve (`attributes`) while three prose sites went false behind it. The arm was proved to fire before it was trusted: injecting a thirteenth field reddens the new form and leaves the retired one green, both measured in the same run. `Schedule` carries 4: `attrGraph`, `condensation`, `edges`, `equations`. `trace.<id>` is `{ deps; hash }` with `hash` fixed at `null`.
+**Returned shapes.** `Schedule` is this library's and carries 4 fields: `attrGraph`, `condensation`, `edges`, `equations`. **The sealed context is `gen-scope`'s** and carries 10, pinned there as an exact set by `fold-equations.test-ctx-sealed`: `accessor`, `attributes`, `declaredEdges`, `equations`, `eval`, `parseParent`, `roots`, `schedule`, `settings`, `trace`. Two fields that were on it here are gone — `builtCtx`, because building a memo context inside the evaluator would install the incremental plane inside the thing the plane is defined against, and `strataOrder`, which had no reader anywhere and whose only toucher was the cell asserting the seal. `trace.<id>` is `{ deps; hash }` with `hash` fixed at `null`. **The exact-set FORM is the part worth carrying, and the reason is worth carrying with it** (`den-hoag-lrrc`): that cell was once a presence check, which passes for any context containing its named fields and says nothing about the rest, so it stayed green across ten, eleven and twelve fields while three prose sites went false behind it.
 
-**Module-level but NOT on `.lib`** (absent from the drift output): `stratumOf` (`lib/equation.nix`), `defaultStrataOrder` and the un-prefixed `scheduleWith` / `buildSchedule` (`lib/schedule.nix`), `mkBuiltCtx` (`lib/resolve.nix`).
+**Module-level but NOT on `.lib`** (absent from the drift output): `stratumOf` (`lib/equation.nix`), `defaultStrataOrder` and the un-prefixed `scheduleWith` / `buildSchedule` (`lib/schedule.nix`). `mkBuiltCtx` retired with the cold fold — the four lines it was are now written out at the one cell that forces the plane.
 
 ## Entry points by task
 
@@ -97,8 +95,8 @@ two filters the derived classifier superseded; the other was `trackedFor` inside
 | Merge layered per-node config along import edges | `cascade { name; channel; combine?; acc?; }` |
 | Resolve a value across an import edge (nearest binding) | `reference { name; select; }` |
 | Gather from the nodes that import me | `reference { name; select; target = "neededBy"; }` |
-| Fold everything into a context | `resolve { roots; equations; parseParent; declaredEdges; }` |
-| Use more than two strata | pass `strataOrder` to `resolve` (index 0 = the base graph-shaping stratum) |
+| Fold everything into a context | `genScope.foldEquations { roots; parseParent; declaredEdges; schedule = _scheduleWith { equations = eqs; }; }` |
+| Use more than two strata | pass `strataOrder` to `_scheduleWith` (index 0 = the base graph-shaping stratum) |
 | Read a resolved value | `project ctx id attr` |
 | Ask which nodes an id declared reads on | `edges ctx id` |
 | Ask coarse name-level provenance | `why ctx { id; attr; }` |
@@ -127,11 +125,11 @@ The two are declared on different surfaces and neither is derived from `compute`
 
 | Trap | Evidence |
 |---|---|
-| A `compute` that reads an attribute it did not declare passes the schedule and evaluates fine — the dep edge is simply absent | equations `{ self-v; sneaky }` with `sneaky.readsAttrs = [ ]` but `compute = self: id: self.get id "self-v" + 100`: `resolve` ⇒ succeeded, `ctx.schedule.edges "sneaky"` ⇒ `[ ]`, `eval.get "child" "sneaky"` ⇒ `101`. Positive control, same compute with `readsAttrs = [ "self-v" ]`: edges ⇒ `[ "self-v" ]`, value ⇒ `101` |
-| An undeclared mutual read is invisible to the Knuth circularity test; it terminates the evaluator with an **uncatchable** stack overflow | `a`/`b` whose computes read each other, both `readsAttrs = [ ]`: `resolve` ⇒ succeeded, `schedule.condensation.sccs` has no SCC of size > 1, and `nix eval` of `(tryEval (ctx.eval.get "child" "a")).success` exits 1 with `error: stack overflow; max-call-depth exceeded` — `tryEval` does not intercept it. Positive control, same computes with the reads declared: `_buildSchedule` ⇒ threw. Test: `test-noncircular-scc-throws` (`ci/tests/schedule.nix`) |
+| A `compute` that reads an attribute it did not declare passes the schedule and evaluates fine — the dep edge is simply absent | equations `{ self-v; sneaky }` with `sneaky.readsAttrs = [ ]` but `compute = self: id: self.get id "self-v" + 100`: the fold ⇒ succeeded, `ctx.schedule.edges "sneaky"` ⇒ `[ ]`, `eval.get "child" "sneaky"` ⇒ `101`. Positive control, same compute with `readsAttrs = [ "self-v" ]`: edges ⇒ `[ "self-v" ]`, value ⇒ `101`. ★ Re-measured through `_scheduleWith` + `gen-scope.foldEquations` after the fold moved; every reading is unchanged, which is the point — the analysis is this library's and the fold merely calls it |
+| An undeclared mutual read is invisible to the Knuth circularity test; it terminates the evaluator with an **uncatchable** stack overflow | `a`/`b` whose computes read each other, both `readsAttrs = [ ]`: the fold ⇒ succeeded, `schedule.condensation.sccs` has no SCC of size > 1, and `nix eval` of `(tryEval (ctx.eval.get "child" "a")).success` exits 1 with `error: stack overflow; max-call-depth exceeded` — `tryEval` does not intercept it. Positive control, same computes with the reads declared: `_buildSchedule` ⇒ threw. Test: `test-noncircular-scc-throws` (`ci/tests/schedule.nix`) |
 | The stratum partition assert is likewise over `readsAttrs` only — an undeclared `structural` → `resolution` read passes both the schedule and eval | `st` at `structural` whose compute does `self.get id "res"` on a `resolution` attr, `readsAttrs = [ ]`: `resolve` ⇒ succeeded, value ⇒ `8`. Positive control, identical compute with `readsAttrs = [ "res" ]`: `resolve` ⇒ threw. Tests: `test-stratum-violation-throws`, `test-nway-multihop-cone-throws` (`ci/tests/schedule.nix`) |
-| A `readsAttrs` entry naming something that is not an equation is silently dropped from the graph; the eval-time read throws | `g.readsAttrs = [ "does-not-exist" ]`: `resolve` ⇒ succeeded, `schedule.edges "g"` ⇒ `[ ]`, `tryEval (eval.get "child" "g")` ⇒ `false`. Positive control, same context: `eval.get "child" "self-v"` ⇒ `1` |
-| Because the analysis is node-agnostic, a name-level cycle whose per-node instantiation terminates is **rejected** | `a` reads `b` only on `child`, `b` reads `a` only on `parent`, both declared: `resolve` ⇒ threw. Same computes with `readsAttrs = [ ]`: `resolve` ⇒ succeeded, `eval.get "child" "a"` ⇒ `2`, `eval.get "child" "b"` ⇒ `2` |
+| A `readsAttrs` entry naming something that is not an equation is silently dropped from the graph; the eval-time read throws | `g.readsAttrs = [ "does-not-exist" ]`: the fold ⇒ succeeded, `schedule.edges "g"` ⇒ `[ ]`, `tryEval (eval.get "child" "g")` ⇒ `false`. Positive control, same context: `eval.get "child" "self-v"` ⇒ `1` |
+| Because the analysis is node-agnostic, a name-level cycle whose per-node instantiation terminates is **rejected** | `a` reads `b` only on `child`, `b` reads `a` only on `parent`, both declared: the fold ⇒ threw. Same computes with `readsAttrs = [ ]`: the fold ⇒ succeeded, `eval.get "child" "a"` ⇒ `2`, `eval.get "child" "b"` ⇒ `2` |
 | Cross-node reads have a **second, separate** declaration surface — `declaredEdges` — which the schedule never consults; under-declaring it serves a stale prior on a warm re-fold | `consumer.sees` reads `producer.p-val`. With `declaredEdges = id: if id == "consumer" then [ "producer" ] else [ ]`, bumping `producer.v` 1→9 ⇒ `109`; with `declaredEdges = _: [ ]` (which is also the **default**) ⇒ `101`, the stale value. The edited node always re-derives: `p-val` ⇒ `9` either way. **The surface is this library's and the consequence is measured in `gen-memo`**, at `warm-override-cross-node.test-undeclared-serves-stale`, which is where the fold that reads the cone now lives — this row states the trap and names its instrument rather than restating a figure about another repository's file |
 
 ### Stratum labels vs the stratum check
@@ -143,7 +141,7 @@ The two are declared on different surfaces and neither is derived from `compute`
 | A plain `synthesized` attr defaults to the **base** stratum, so it may read nothing later | `stratumOf` fall-through ⇒ `"structural"`. **The second half of this row is struck**: it used to read "and is never warm-served", which was true of a classifier that no longer decides that question. Warm-servability is the evaluator's resolutional partition now, and a `synthesized` attribute is reusable unless its NAME is in the reserved structural namespace |
 | `terminal` is exempt from the ordering check | `test-terminal-reads-resolution-ok`, `test-nway-terminal-exempt` (`ci/tests/schedule.nix`). Its former second half — "but **is** in the warm-served set" — is struck for the same reason as the row above |
 | A hand-built equation with no `readsAttrs` key at all is accepted by the schedule as reading nothing (`or [ ]` in `scheduleWith`) | `_buildSchedule { a = { kind; stratum; compute; name; }; }` ⇒ succeeded. Positive control: `R.attr` without `readsAttrs` fails with `error: function 'attr' called without required argument 'readsAttrs'` — an arity error `tryEval` does not catch |
-| `resolve` forces the schedule with `seq`, so gate failures throw at `resolve`, not lazily on first read | `tryEval` of a whole `resolve` call with a declared stratum violation ⇒ `false`. Test: `test-resolve-nway-violation-throws` (`ci/tests/resolve.nix`) |
+| The fold forces the schedule with `seq`, so gate failures throw where the caller made the call and not lazily on first read | The trap is real and **the code it describes is now `gen-scope`'s**, so this row points rather than restates: measure it at that repository's `fold-equations.test-a-throwing-schedule-is-refused-at-the-entry`, whose control beside it is a schedule that does not throw. What stays here is the gate itself — `schedule.test-stratum-violation-throws` and the six `test-nway-*` cells (`ci/tests/schedule.nix`) |
 
 ### Constructors, terminal, incremental, key
 
@@ -156,11 +154,11 @@ The two are declared on different surfaces and neither is derived from `compute`
 | `why` reports only **cross-node** pairs — it never surfaces an intra-node read, and returns `[ ]` for an unknown attr rather than throwing | `child` declares an edge to `parent`; `why ctx { id = "child"; attr = "derived"; }` ⇒ `[ { id = "parent"; attr = "self-v"; } ]`, but `why ctx { id = "parent"; attr = "derived"; }` ⇒ `[ ]` even though `parent.derived` does read `parent.self-v`. `why ctx { id = "child"; attr = "no-such-attr"; }` ⇒ `[ ]`. `edges ctx "no-such-node"` ⇒ `[ ]`. Test: `test-why` (`ci/tests/contract.nix`) |
 | The warm fold refuses edits to NTA-spawned nodes — only `roots` keys are editable (the refusal is `gen-memo`'s now; the NTA behaviour it refuses over is this library's) | `nta` spawning `spawned-1` under `host-a`: `eval.allNodes` ⇒ `[ "host-a" "spawned-1" ]`, `eval.get "spawned-1" "self-v"` ⇒ `42`, `ctx.roots ? spawned-1` ⇒ `false`, `tryEval (override ctx { id = "spawned-1"; … })` ⇒ `false`, same override on `host-a` ⇒ `true`. Test: `test-nta-grammar-growth` (`ci/tests/conformance.nix`) |
 | Any edit whose `newDecls` merely *mentions* `includes` / `neededBy` / `__edges` / `parent` throws as a topology change; the old value is never compared | The trap is real and **the code it describes is now `gen-memo`'s** (`lib/warm.nix`), so this row points rather than restates: measure it at that repository's `warm-override.test-edge-move-throws` and `warm-resolve.test-batch-edge-move-throws`. A figure measured here about a file that left would decay silently |
-| `builtCtx` is lazy and never forced on the cold path, so a **cyclic** `declaredEdges` still resolves — forcing it throws | with `declaredEdges` cyclic between `child` and `parent`: `eval.get "child" "self-v"` ⇒ `1`, but `tryEval (attrNames ctx.builtCtx)` ⇒ `false`. Test: `test-cold-ignores-builtctx` (`ci/tests/resolve.nix`) |
+| The plane's context is no longer a FIELD of the sealed context, so nothing forces it by accident and nothing hides an absent plane behind laziness either — a caller that wants it composes it and thereby forces it | `ci/tests/resolve.nix` is that composition and the ecosystem's only site forcing `build`; a **cyclic** `declaredEdges` still resolves on the cold path, measured at `gen-scope`'s `fold-equations.test-cyclic-declared-edges-leave-the-cold-path-alone` |
 | `materialize` and `classKey` hardcode their attribute names and throw when the equation set lacks them | on a context with neither: `tryEval (materialize ctx "child")` ⇒ `false`, `tryEval (classKey ctx "child")` ⇒ `false`. `materializeAll ctx "nixos"` ⇒ `[ "h" ]` on a `nixos`-typed node, `materializeAll ctx "host"` ⇒ `[ ]` on the same context |
 | `classKey`'s function-sentinel collapses closure-valued leaves, so two values differing only in a function digest identically | `resolved-aspects` = `{ fn = x: x; tag = "same"; }` vs `{ fn = x: x + 1; tag = "same"; }` ⇒ keys equal. Positive control, same fixture: `{ fn = x: x; tag = "different"; }` ⇒ key differs. `lib/classkey.nix` also documents that `sanitize` assumes a finite (non-self-referential) value — read, not exercised. Tests: `test-function-bearing-stable`, `test-function-bearing-distinct` (`ci/tests/classkey.nix`) |
 | `terminalBind` returns more modules than it was given — `wrapAll … .all` appends the collision validators | one input module ⇒ 2 elements, and `materialize` of an `output-modules` equation built from it ⇒ 2. README §`terminalBind` records that an `error`-strategy collision is a lazy `config.warnings` contribution — read, not exercised. Test: `test-terminal-all-validator-safe` (`ci/tests/materialize.nix`) |
-| `settings` is carried verbatim through the context and never consulted by the library | `resolve { settings = { anything = "carried"; }; … }` ⇒ `ctx.settings` unchanged. `git grep -n settings -- lib/` matches only the `resolve` parameter, its `inherit`, and one comment; positive control, same instrument: `equations` matches 4 lib files |
+| `settings` is carried verbatim through the context and never consulted by any library | the fold with `settings = { anything = "carried"; }` ⇒ `ctx.settings` unchanged, re-measured through `gen-scope.foldEquations`. `git grep -c settings -- lib/` here now matches **nothing** (exit 1) — the parameter left with the fold; positive control, same instrument same run: `equations` matches 3 lib files |
 
 ## Theory
 
@@ -172,7 +170,7 @@ The two are declared on different surfaces and neither is derived from `compute`
 - **Vogt, Swierstra & Kuiper (1989), *Higher-Order Attribute Grammars*** — `nta` (§2 node-spawning attribute) and the well-definedness gate lifted onto Knuth's test. `lib/schedule.nix` header scopes it: the gate discharges the Knuth/reduced-AG acyclicity half **only**; §3.2 HOAG well-definedness (finite tree expansion) is left to runtime — a non-terminating `spawn` diverges at eval.
 - **Neron, Tolmach, Visser & Wachsmuth (2015), *A Theory of Name Resolution*** — the D>I>P strata fold in `cascade` over neron-ordered import layers (`scope.collectionAttr { traverse = "neron"; }`), and the staged name-resolution-then-resolution anchor the schedule's own comment names as the honest source of the partition.
 - **van Antwerpen et al. (2016), Statix §4.3** — the stratum partition assert, generalized N-way over a declared `strataOrder`, **with Apt–Blair–Walker (1988)** for the positive-dependency admission: a rule may read strata ≤ its own, a strictly-later read is the violation. Both cited in `lib/schedule.nix` and in the throw text.
-- **Mokhov, Mitchell & Peyton Jones (2018), *Build Systems à la Carte*** §4.1 — Nix laziness *is* the runtime schedule; `lib/default.nix` and `lib/resolve.nix` both state gen-resolve never re-orders thunks.
+- **Mokhov, Mitchell & Peyton Jones (2018), *Build Systems à la Carte*** §4.1 — Nix laziness *is* the runtime schedule; `lib/default.nix` states that gen-resolve never re-orders thunks, and the fold that calls the evaluator says the same at `gen-scope`.
 - **Sloane, Kats & Visser (2010), *A Pure Object-Oriented Embedding of Attribute Grammars*** §2.2 — iterate-to-fixpoint over an all-`circular` SCC. `lib/schedule.nix` cites this as "Sloane 2009"; README as 2010.
 - **Reps, Teitelbaum & Demers (1983)** §4.3 — the AFFECTED set. The claim and the code stating it moved to `gen-memo` with the override cone: the topological reverse cone is a sound over-approximation, never RTD's exact AFFECTED.
 - **Hedin (2000), *Reference Attributed Grammars*** — forward `reference`, nearest binding across imports.
@@ -192,7 +190,7 @@ nix eval --json .#lib --apply 'l: builtins.attrNames l'
 Current output (verbatim):
 
 ```json
-["_buildSchedule","_scheduleWith","attr","cascade","classKey","edges","materialize","materializeAll","nta","project","reference","resolve","terminalBind","why"]
+["_buildSchedule","_scheduleWith","attr","cascade","classKey","edges","materialize","materializeAll","nta","project","reference","terminalBind","why"]
 ```
 
 **Checks.** Test-runner invocation (from the repo root; CI runs the same command with `working-directory: ci`, `.github/workflows/ci.yml`):
