@@ -11,9 +11,10 @@ let
   inherit (genResolve)
     attr
     cascade
-    resolve
     project
+    _scheduleWith
     ;
+  inherit (genScope) foldEquations;
   # scope hierarchy leaf -> mid -> base (parent chain; neron walks up it)
   roots = genScope.buildNodes {
     parentGraph = genScope.path [
@@ -61,9 +62,9 @@ let
       combine = "append";
     };
   };
-  ctx = resolve {
+  ctx = foldEquations {
     inherit roots;
-    equations = eqs;
+    schedule = _scheduleWith { equations = eqs; };
     parseParent = id: roots.${id}.parent or null;
   };
 in

@@ -41,6 +41,10 @@
         genGraph = gen-graph.lib;
         genAlgebra = gen-algebra.lib;
         genBind = gen-bind.lib;
+        # The plane, reached by the suite and by no library file here: the one cell that forces
+        # `build` composes it with the evaluator's accessor at the test, which is where a caller
+        # holding both libraries composes them.
+        genMemo = gen-memo.lib;
       };
     };
 }

@@ -11,9 +11,9 @@ let
   inherit (genResolve)
     attr
     nta
-    resolve
     project
     ;
+  inherit (genScope) foldEquations;
   roots = genScope.buildNodes {
     decls.cluster = {
       replicas = 3;
@@ -72,9 +72,9 @@ let
       compute = self: id: [ ];
     };
   };
-  ctx = resolve {
+  ctx = foldEquations {
     inherit roots;
-    equations = eqs;
+    schedule = genResolve._scheduleWith { equations = eqs; };
     parseParent =
       id:
       if roots ? ${id} then

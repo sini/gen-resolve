@@ -3,10 +3,11 @@
 # under one classKey, and a warm override of one host re-derives only its reverse cone — every
 # other host keeps its prior resolved value.
 #
-# THREE LIBRARIES, THREE CONCERNS, VISIBLE IN THE CALL. gen-resolve folds the equations and seals
-# the context; gen-scope evaluates; gen-memo decides what may be reused and hands the decision back
-# to the evaluator. The plane takes no evaluator dependency of its own, so the evaluator is passed
-# to it at the call — which is what `engine` below is.
+# THREE LIBRARIES, THREE CONCERNS, VISIBLE IN THE CALL. gen-resolve owns the authoring vocabulary
+# and builds the schedule; gen-scope folds those equations, evaluates them and seals the context;
+# gen-memo decides what may be reused and hands the decision back to the evaluator. The plane takes
+# no evaluator dependency of its own, so the evaluator is passed to it at the call — which is what
+# `engine` below is.
 {
   genResolve,
   genScope,
@@ -18,10 +19,10 @@ let
   inherit (genResolve)
     attr
     reference
-    resolve
     project
     classKey
     ;
+  inherit (genScope) foldEquations;
   inherit (genMemo) warmOverride;
   engine = { inherit (genScope) evalWarm; };
 
@@ -97,9 +98,9 @@ let
   # declaredEdges MUST over-declare the cross-node reads (soundness (c)): web1 reads db1 via the
   # includes edge, so declare web1 -> db1. This is what makes override sound across nodes.
   declaredEdges = id: if id == "web1" then [ "db1" ] else [ ];
-  ctx = resolve {
+  ctx = foldEquations {
     inherit roots declaredEdges;
-    equations = eqs;
+    schedule = genResolve._scheduleWith { equations = eqs; };
     parseParent = _: null;
   };
 

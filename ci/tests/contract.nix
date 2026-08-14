@@ -6,11 +6,12 @@
 }:
 let
   inherit (genResolve)
-    resolve
     project
     edges
     why
+    _scheduleWith
     ;
+  inherit (genScope) foldEquations;
   roots = genScope.buildNodes {
     parentGraph = genScope.edge "a" "b";
     decls = {
@@ -49,9 +50,9 @@ let
   };
   # `a` declares a read-edge to `b` (consumer -> producer)
   declaredEdges = id: if id == "a" then [ "b" ] else [ ];
-  ctx = resolve {
+  ctx = foldEquations {
     inherit roots declaredEdges;
-    equations = eqs;
+    schedule = _scheduleWith { equations = eqs; };
     parseParent = id: roots.${id}.parent or null;
   };
 in

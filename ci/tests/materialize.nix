@@ -1,7 +1,7 @@
-# Task 6 — the terminal + the DP5 evalModules-equivalence oracle. nixpkgs `lib` is used
+# THE TERMINAL AND THE evalModules-EQUIVALENCE ORACLE. nixpkgs `lib` is used
 # ONLY here (the oracle); the library (../lib) stays nixpkgs-free (purity.nix enforces).
 #
-# DP5: a materialized module set (terminalBind -> gen-bind wrapAll -> .all) fed to a REAL
+# The property: a materialized module set (terminalBind -> gen-bind wrapAll -> .all) fed to a REAL
 # lib.evalModules produces the SAME resolved config as the equivalent flat module list fed to
 # lib.evalModules directly. Shape mirrors den + the gen-bind evalModules-equivalence convention:
 # the option DECLARATION lives in a base module (in den, the NixOS module set); gen-resolve emits
@@ -17,11 +17,12 @@
 }:
 let
   inherit (genResolve)
-    resolve
     materialize
     materializeAll
     terminalBind
+    _scheduleWith
     ;
+  inherit (genScope) foldEquations;
   roots = genScope.buildNodes {
     decls = {
       h = { };
@@ -78,9 +79,9 @@ let
       };
     };
   };
-  ctx = resolve {
+  ctx = foldEquations {
     inherit roots;
-    equations = eqs;
+    schedule = _scheduleWith { equations = eqs; };
     parseParent = _: null;
   };
   out = materialize ctx "h";
@@ -108,7 +109,7 @@ in
       expr = builtins.attrNames (materializeAll ctx "nixos");
       expected = [ "h" ];
     };
-    # DP5 central gate: terminal binding path == equivalent flat module list, through real evalModules
+    # The central gate: terminal binding path == equivalent flat module list, through real evalModules
     test-evalmodules-equivalence = {
       expr = viaResolve;
       expected = viaNixpkgs;

@@ -1,4 +1,4 @@
-# Task 9 — the fleet KEY (D8). classKey digests a node's resolved `resolved-aspects` value INCLUDING
+# THE FLEET KEY. classKey digests a node's resolved `resolved-aspects` value INCLUDING
 # arg-shape; equal resolved values collapse to one key, differing arg-shape splits, and function-bearing
 # values digest to a stable sentinel (no throw, no false collision across distinct non-function parts).
 {
@@ -8,7 +8,8 @@
   ...
 }:
 let
-  inherit (genResolve) resolve classKey;
+  inherit (genResolve) classKey _scheduleWith;
+  inherit (genScope) foldEquations;
   roots = genScope.buildNodes {
     decls = {
       a = {
@@ -63,9 +64,9 @@ let
       compute = self: id: [ ];
     };
   };
-  ctx = resolve {
+  ctx = foldEquations {
     inherit roots;
-    equations = eqs;
+    schedule = _scheduleWith { equations = eqs; };
     parseParent = _: null;
   };
 in

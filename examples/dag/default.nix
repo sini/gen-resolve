@@ -9,9 +9,9 @@ let
   inherit (genResolve)
     attr
     cascade
-    resolve
     project
     ;
+  inherit (genScope) foldEquations;
   build = genResolve._buildSchedule;
 
   # scope hierarchy policy -> host -> env -> default: each node's PARENT is the next-broader
@@ -61,9 +61,9 @@ let
       channel = "settings";
     };
   };
-  ctx = resolve {
+  ctx = foldEquations {
     inherit roots;
-    equations = eqs;
+    schedule = genResolve._scheduleWith { equations = eqs; };
     parseParent = id: roots.${id}.parent or null;
   };
   resolved = project ctx "policy" "settings";

@@ -11,9 +11,10 @@ let
   inherit (genResolve)
     attr
     reference
-    resolve
     project
+    _scheduleWith
     ;
+  inherit (genScope) foldEquations;
   roots = genScope.buildNodes {
     importGraph = genScope.overlays [
       (genScope.edge "web1" "db1")
@@ -51,9 +52,9 @@ let
       target = "neededBy";
     };
   };
-  ctx = resolve {
+  ctx = foldEquations {
     inherit roots;
-    equations = eqs;
+    schedule = _scheduleWith { equations = eqs; };
     parseParent = _: null;
   };
 in

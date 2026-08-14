@@ -1,4 +1,4 @@
-# Task 10 — the theory oracle. Each property cites the lemma it discharges:
+# THE THEORY ORACLE. Each property cites the lemma it discharges:
 #   1. demand-order == from-scratch toposort            Knuth 1968 (attribute schedule)
 #   2. well-definedness gate throws                      Knuth 1968 circularity test / Vogt 1989
 #   3. two-stratum partition assert throws               van Antwerpen 2016 §4.3
@@ -20,11 +20,12 @@
 }:
 let
   inherit (genResolve)
-    resolve
     project
     attr
     nta
+    _scheduleWith
     ;
+  inherit (genScope) foldEquations;
   build = genResolve._buildSchedule;
 
   modp = a: b: a - b * (a / b);
@@ -68,9 +69,9 @@ let
     };
   ctxFor =
     seed: base:
-    resolve {
+    foldEquations {
       roots = rootsFor base;
-      equations = eqsFor seed;
+      schedule = _scheduleWith { equations = eqsFor seed; };
       parseParent = _: null;
     };
 
@@ -181,9 +182,9 @@ let
       compute = self: id: [ ];
     };
   };
-  ntaCtx = resolve {
+  ntaCtx = foldEquations {
     roots = ntaRoots;
-    equations = ntaEqs;
+    schedule = _scheduleWith { equations = ntaEqs; };
     parseParent =
       id:
       if ntaRoots ? ${id} then
