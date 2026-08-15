@@ -26,7 +26,6 @@
       genResolve = import ../lib {
         scope = gen-scope.lib;
         graph = gen-graph.lib;
-        memo = gen-memo.lib;
         algebra = gen-algebra.lib;
         bind = gen-bind.lib;
       };

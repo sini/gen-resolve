@@ -1,6 +1,6 @@
 # Purity invariant (gen-prelude design §5): the gen-resolve library (./lib) is
 # nixpkgs-lib-free. It depends only on gen-prelude + {gen-scope, gen-graph,
-# gen-rebuild, gen-algebra, gen-bind} — all pure siblings. This pins "pure" as a
+# gen-algebra, gen-bind} — all pure siblings. This pins "pure" as a
 # checked property: a stray `lib.foo` / `lib.types` / `evalModules` / `mkOption` /
 # nixpkgs input creeping back into the library source fails CI. (gen-algebra IS a
 # legitimate dep here, so its tokens are NOT forbidden — unlike gen-dispatch.)

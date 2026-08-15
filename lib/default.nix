@@ -1,4 +1,4 @@
-# gen-resolve public API. Class B — 5 gen siblings (scope/graph/memo/algebra/bind). gen-prelude
+# gen-resolve public API. Class B — 4 gen siblings (scope/graph/algebra/bind). gen-prelude
 # is only a TRANSITIVE dep (each sibling carries its own); the .lib surface takes no direct prelude.
 # A file with deps is a function of named VALUES; a dep-free one is a bare value.
 #
@@ -18,19 +18,14 @@
 # calls it made across this boundary are local ones there. `_scheduleWith` is the producer of the
 # value that entry now takes, which is why a caller of the fold still reaches for this library.
 #
-# ★ THE `memo` PARAMETER IS UNREAD. The plane call went with the cold fold's departure and did NOT
-# follow it into the evaluator — building a memo context there would install the incremental plane
-# inside the thing the plane is defined against — so it is composed by callers holding both
-# libraries, `ci/tests/resolve.nix` being the one that forces it. Retiring the parameter is a change
-# to this library's construction signature and its declared sibling set, which is a disposition of
-# its own and not this migration's.
+# THE INCREMENTAL PLANE IS NOT A DEPENDENCY OF THIS LIBRARY. Building a memo context here would
+# install the plane inside the thing it is defined against, so a caller holding both composes it.
 #
 # WHAT ELSE IS NOT HERE, so its absence is not read as an oversight: the static schedule's
 # destination is the query-gate home. That disposition is settled; the landing is not this change.
 {
   scope,
   graph,
-  memo,
   algebra,
   bind,
 }:

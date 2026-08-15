@@ -10,7 +10,7 @@ The authoring vocabulary for semantic equations (`attr` / `nta` / `cascade` / `r
 
 ## Not this library's job
 
-Quoted text is the owner's own `flake.nix` `description` field, verbatim. `lib/default.nix` takes five sibling values (`scope`, `graph`, `memo`, `algebra`, `bind`); `git grep -c <token> -- lib/` returns zero files for `gen-select`, `gen-schema`, `gen-aspects`, `gen-types`, `gen-merge`, `gen-flake`, `gen-dispatch`, `gen-pipe`, `nixpkgs`, `evalModules`, `mkOption` (positive control, same instrument, same run: `gen-resolve` 5 files, `scope.` 1, `graph.` 1, `algebra.` 1, `bind.` 1). ★ **`memo.` is now 0 files and the formal is unread** — the plane call left with the cold fold and did not follow it into the evaluator, so it is composed by callers holding both libraries. Retiring the parameter is a change to this library's construction signature and its declared sibling set, and is a disposition of its own.
+Quoted text is the owner's own `flake.nix` `description` field, verbatim. `lib/default.nix` takes four sibling values (`scope`, `graph`, `algebra`, `bind`); `git grep -c <token> -- lib/` returns zero files for `gen-select`, `gen-schema`, `gen-aspects`, `gen-types`, `gen-merge`, `gen-flake`, `gen-dispatch`, `gen-pipe`, `nixpkgs`, `evalModules`, `mkOption` (positive control, same instrument, same run: `gen-resolve` 5 files, `scope.` 1, `graph.` 1, `algebra.` 1, `bind.` 1). The `memo` formal was retired; the plane is composed by callers holding both libraries rather than declared as a sibling here.
 
 | Responsibility | Owner |
 |---|---|
@@ -31,7 +31,7 @@ Quoted text is the owner's own `flake.nix` `description` field, verbatim. `lib/d
 
 ## Exports
 
-Entry: `inputs.gen-resolve.lib` (flake) or `import ./lib { scope; graph; memo; algebra; bind; }`. The root `default.nix` is a shim that derives those deps from the pinned `flake.lock` via `fetchTree` and calls `import ./lib`. Flat namespace — no nested groups.
+Entry: `inputs.gen-resolve.lib` (flake) or `import ./lib { scope; graph; algebra; bind; }`. The root `default.nix` is a shim that derives those deps from the pinned `flake.lock` via `fetchTree` and calls `import ./lib`. Flat namespace — no nested groups.
 
 **Equation constructors** — `lib/equation.nix`. Each yields `Equation = { name; kind; compute; readsAttrs; stratum }` (5 keys, measured).
 
@@ -82,7 +82,7 @@ longer decided from a declared stratum — it is the evaluator's own resolutiona
 `_trackedAttrs` is **gone**. It computed the warm-served set from the declared stratum, one of the
 two filters the derived classifier superseded; the other was `trackedFor` inside the warm fold.
 
-**Returned shapes.** `Schedule` is this library's and carries 4 fields: `attrGraph`, `condensation`, `edges`, `equations`. **The sealed context is `gen-scope`'s** and carries 10, pinned there as an exact set by `fold-equations.test-ctx-sealed`: `accessor`, `attributes`, `declaredEdges`, `equations`, `eval`, `parseParent`, `roots`, `schedule`, `settings`, `trace`. Two fields that were on it here are gone — `builtCtx`, because building a memo context inside the evaluator would install the incremental plane inside the thing the plane is defined against, and `strataOrder`, which had no reader anywhere and whose only toucher was the cell asserting the seal. `trace.<id>` is `{ deps; hash }` with `hash` fixed at `null`. **The exact-set FORM is the part worth carrying, and the reason is worth carrying with it** (`den-hoag-lrrc`): that cell was once a presence check, which passes for any context containing its named fields and says nothing about the rest, so it stayed green across ten, eleven and twelve fields while three prose sites went false behind it.
+**Returned shapes.** `Schedule` is this library's and carries 4 fields: `attrGraph`, `condensation`, `edges`, `equations`. **The sealed context is `gen-scope`'s** and carries 10, pinned there as an exact set by `fold-equations.test-ctx-sealed`: `accessor`, `attributes`, `declaredEdges`, `equations`, `eval`, `parseParent`, `roots`, `schedule`, `settings`, `trace`. Two fields that were on it here are gone — `builtCtx`, because building a memo context inside the evaluator would install the incremental plane inside the thing the plane is defined against, and `strataOrder`, which had no reader anywhere and whose only toucher was the cell asserting the seal. `trace.<id>` is `{ deps; hash }` with `hash` fixed at `null`. **The exact-set FORM is the part worth carrying, and the reason is worth carrying with it**: that cell was once a presence check, which passes for any context containing its named fields and says nothing about the rest, so it stayed green across ten, eleven and twelve fields while three prose sites went false behind it.
 
 **Module-level but NOT on `.lib`** (absent from the drift output): `stratumOf` (`lib/equation.nix`), `defaultStrataOrder` and the un-prefixed `scheduleWith` / `buildSchedule` (`lib/schedule.nix`). `mkBuiltCtx` retired with the cold fold — the four lines it was are now written out at the one cell that forces the plane.
 

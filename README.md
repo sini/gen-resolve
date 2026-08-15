@@ -6,7 +6,7 @@ Pure-Nix, `nixpkgs.lib`-free **semantic-equation vocabulary and static attribute
 
 gen-resolve owns the static attribute-dependency *schedule* (Knuth 1968 dependency graph + the Vogt 1989 HOAG well-definedness gate + the N-way stratified partition assert, default two-stratum) and the equation vocabulary the schedule is built over. **The cold fold has left**: folding those equations into a sealed context is `gen-scope.foldEquations`, which takes a schedule as an argument and reads its equations off it, so a caller cannot pair a schedule with equations it was not built from. Every actual computation is a hard-boundary delegation to a pure sibling: gen-resolve supplies accessor *functions*, never concrete node maps, and domain knowledge (NixOS, aspects, den's attributes) stays in the consumer. Runtime evaluation order is demand — Nix laziness inside `gen-scope.eval`'s `lib.fix` (Mokhov 2018 §4.1); gen-resolve never re-orders thunks.
 
-gen-resolve is **Class B**: it declares five pure gen siblings (`gen-scope`, `gen-graph`, `gen-memo`, `gen-algebra`, `gen-bind`), of which `lib/` now reads four — the `memo` formal went unread when the cold fold left, and retiring it is a change to this library's construction signature rather than part of that move. `gen-prelude` is a transitive dependency only — each sibling carries its own; the `.lib` surface takes no direct prelude. The library (`lib/`) is `nixpkgs.lib`-free (enforced by `ci/tests/purity.nix`); nixpkgs is pulled only in `ci/` for the test harness and the evalModules-equivalence oracle.
+gen-resolve is **Class B**: it declares four pure gen siblings (`gen-scope`, `gen-graph`, `gen-algebra`, `gen-bind`), and `lib/` reads all four. `gen-prelude` is a transitive dependency only — each sibling carries its own; the `.lib` surface takes no direct prelude. The library (`lib/`) is `nixpkgs.lib`-free (enforced by `ci/tests/purity.nix`); nixpkgs is pulled only in `ci/` for the test harness and the evalModules-equivalence oracle.
 
 ## Table of Contents
 
@@ -69,7 +69,7 @@ stores the graph and never carries domain knowledge.
 ## Usage
 
 gen-resolve exposes a single `.lib` value output. Source lives in `lib/`; it is a function of the
-five sibling `.lib` values (Class B).
+four sibling `.lib` values (Class B).
 
 ### As a flake input
 
@@ -95,7 +95,6 @@ let
   resolve = import ./path/to/gen-resolve/lib {
     scope   = gen-scope.lib;
     graph   = gen-graph.lib;
-    memo    = gen-memo.lib;
     algebra = gen-algebra.lib;
     bind    = gen-bind.lib;
   };
