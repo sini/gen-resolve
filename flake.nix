@@ -3,11 +3,11 @@
 
   # Class B: 4 pure gen siblings. No nixpkgs input — the library (./lib) is nixpkgs-lib-free
   # (checked by ci/tests/purity.nix). nixpkgs is pulled ONLY in ci/ (the nix-unit harness + the
-  # evalModules-equivalence oracle). gen-prelude is declared for the standalone ./default.nix
-  # shim (which constructs the sibling libs, each of which takes prelude) — the .lib output below
-  # does not take a direct prelude (it consumes the already-constructed sibling .lib values).
+  # evalModules-equivalence oracle). gen-prelude is NOT declared: the .lib output takes no direct
+  # prelude, and the standalone ./default.nix shim takes each sibling at its own standalone entry,
+  # which resolves its prelude from that sibling's own lock. A prelude pinned here would be a
+  # revision no consumer of this library ever evaluates.
   inputs = {
-    gen-prelude.url = "github:sini/gen-prelude";
     gen-scope.url = "github:sini/gen-scope";
     gen-graph.url = "github:sini/gen-graph";
     gen-algebra.url = "github:sini/gen-algebra";

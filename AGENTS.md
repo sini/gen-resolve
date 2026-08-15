@@ -109,7 +109,7 @@ two filters the derived classifier superseded; the other was `trackedFor` inside
 
 ## Measured traps
 
-Every row was evaluated in this run at rev `0ef3617` (a historical note, not a pin) against `R = import <repo>/lib { … }`, with the five siblings constructed from the repo's own `flake.lock` exactly as `default.nix` does. Shared fixtures: `roots2 = scope.buildNodes { parentGraph = scope.edge "child" "parent"; decls = { parent.v = 10; child.v = 1; }; types = { parent = "host"; child = "host"; }; }`; `xroots v = scope.buildNodes { importGraph = scope.edge "consumer" "producer"; decls.producer.v = v; }`; `croots = scope.buildNodes { importGraph = scope.edge "leaf" "base"; }` with a `ch` channel on each node; `te e = (builtins.tryEval e).success`. `tryEval` in this Nix catches only thrown/assert errors, so two rows below are recorded as the observed process failure instead.
+Every row was evaluated in this run at rev `0ef3617` (a historical note, not a pin) against `R = import <repo>/lib { … }`, with the five siblings constructed from the repo's own `flake.lock` exactly as `default.nix` did at that rev. Shared fixtures: `roots2 = scope.buildNodes { parentGraph = scope.edge "child" "parent"; decls = { parent.v = 10; child.v = 1; }; types = { parent = "host"; child = "host"; }; }`; `xroots v = scope.buildNodes { importGraph = scope.edge "consumer" "producer"; decls.producer.v = v; }`; `croots = scope.buildNodes { importGraph = scope.edge "leaf" "base"; }` with a `ch` channel on each node; `te e = (builtins.tryEval e).success`. `tryEval` in this Nix catches only thrown/assert errors, so two rows below are recorded as the observed process failure instead.
 
 ### What the schedule analyses, and what the evaluator does
 

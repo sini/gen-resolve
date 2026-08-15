@@ -1,16 +1,16 @@
 # Standalone (non-flake) entry. Flake consumers should use the `.lib` output.
 #
-# gen-resolve is Class B: gen-prelude base + {gen-scope, gen-graph,
-# gen-algebra, gen-bind}. This shim derives all five from the pinned flake.lock
-# (content-addressed via narHash, so it stays pure) and needs no `<nixpkgs>`.
-# Each dep is constructed with exactly the args its lib/default.nix takes:
-#   gen-prelude, gen-algebra : argless bare-value libs
-#   gen-scope, gen-graph, gen-bind : { prelude }
+# gen-resolve is Class B: {gen-scope, gen-graph, gen-algebra, gen-bind}. This shim derives all four
+# from the pinned flake.lock (content-addressed via narHash, so it stays pure) and needs no
+# `<nixpkgs>`. Each DEP-BEARING sibling flake `.lib` self-resolves its own deps, so this shim imports
+# that sibling's standalone entry, which self-constructs: a `lib/` formal list is that library's
+# private contract and gains members without notice to this file. gen-algebra is dep-free — its lib
+# is a bare value and its entry IS that value, so it is imported directly and applied to nothing.
 # Pass any dep explicitly to override.
 {
   lock ? builtins.fromJSON (builtins.readFile ./flake.lock),
   # Resolve each direct input via root.inputs indirection — the plain node names
-  # (`gen-prelude`, `gen-scope`, …) can be TRANSITIVE aliases (`gen-prelude_3`), so
+  # (`gen-scope`, `gen-graph`, …) can be TRANSITIVE aliases (`gen-graph_2`), so
   # dereference root.inputs.<name> to the actual node key before fetching.
   fetch ?
     name:
@@ -28,15 +28,12 @@
           ;
       }
     ),
-  prelude ? import "${fetch "gen-prelude"}/lib",
   algebra ? import "${fetch "gen-algebra"}/lib",
-  scope ? import "${fetch "gen-scope"}/lib" { inherit prelude; },
-  graph ? import "${fetch "gen-graph"}/lib" { inherit prelude; },
-  bind ? import "${fetch "gen-bind"}/lib" { inherit prelude; },
+  scope ? import "${fetch "gen-scope"}" { },
+  graph ? import "${fetch "gen-graph"}" { },
+  bind ? import "${fetch "gen-bind"}" { },
   ...
 }:
-# `prelude` above is the builder for the sibling libs (scope/graph/bind each take it);
-# ./lib itself takes only the 4 constructed siblings, not a direct prelude.
 import ./lib {
   inherit
     scope
