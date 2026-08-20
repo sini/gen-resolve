@@ -62,7 +62,7 @@ stores the graph and never carries domain knowledge.
 | [gen-bind](https://github.com/sini/gen-bind) | Module binding (inject external args into NixOS modules) |
 | [gen-dispatch](https://github.com/sini/gen-dispatch) | Relational rule dispatch STEP (stratified groups, conflict resolution) |
 | [gen-resolve](https://github.com/sini/gen-resolve) | Demand-driven RAG evaluator over scope graphs (attribute schedule + convergence loop) |
-| [gen-rebuild](https://github.com/sini/gen-rebuild) | Pure-Nix incremental rebuilder (change propagation, AFFECTED set) |
+| [gen-memo](https://github.com/sini/gen-memo) | The incremental plane — decides reuse, never evaluates (change propagation, AFFECTED set) |
 | [gen-vars](https://github.com/sini/gen-vars) | Pure-Nix vars/secrets (den-agnostic) |
 | [gen-flake](https://github.com/sini/gen-flake) | The nixpkgs boundary — compose purely, inject resolved values, build NixOS systems (value-injection) |
 
@@ -115,7 +115,7 @@ Every computation is a hard-boundary delegation. gen-resolve owns only the sched
 |---|---|---|
 | demand fixpoint (runtime order = Nix laziness) | `gen-scope` `eval` / `evalWarm` | Mokhov 2018 §4.1 |
 | attribute-dependency topology / condensation / reverse cone | `gen-graph` `condensation` / `reachableFrom` / `dependentsOf` / `coneRank` | Knuth 1968 |
-| dirtiness oracle (deferred cross-invocation layer) | `gen-rebuild` `build` / `affectedSet` | Mokhov 2018 rebuilder / RTD 1983 |
+| dirtiness oracle (deferred cross-invocation layer) | `gen-memo` `build` / `affectedSet` | Mokhov 2018 rebuilder / RTD 1983 |
 | strata fold (Neron D>I>P; `cascade.combine` = the per-field strategy) | `gen-algebra` `record.foldLayersTraced` | Neron et al. 2015 §2 |
 | terminal module binding (closure-based / partial-application arg injection) | `gen-bind` `wrapAll` | Reynolds 1972 §5 environments (informed by) |
 | convergence loop (Kleene ascent over a `circular` SCC) | `gen-scope` `circular` | Sloane 2010 §2.2 |
