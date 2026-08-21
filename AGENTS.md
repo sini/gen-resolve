@@ -14,7 +14,7 @@ Quoted text is the owner's own `flake.nix` `description` field, verbatim. `lib/d
 
 | Responsibility | Owner |
 |---|---|
-| The demand fixpoint itself — `lib.fix` memoization, `eval` / `evalWarm`, `circular` Kleene ascent, `query` / `queryReverse` / `collectionAttr` / `recordedDeps` | `gen-scope` — "gen-scope: demand-driven attribute grammar evaluator over algebraic scope graphs" |
+| The demand fixpoint itself — `lib.fix` memoization, `eval` / `evalWarm`, `circular` Kleene ascent, `query` / `queryReverse` / `collectionAttr` | `gen-scope` — "gen-scope: demand-driven attribute grammar evaluator over algebraic scope graphs" |
 | Graph topology — SCC condensation, `reachableFrom`, `dependentsOf` | `gen-graph` — "gen-graph: accessor-based graph query combinators" |
 | Dirtiness / AFFECTED-set detection, and the WARM FOLD ITSELF (`build`, `affectedSet`, `warmOverride`, `warmResolve`) | `gen-memo` — the incremental plane, which the rebuilder core retired into. The warm fold and the override cone live there too, and the memo context the cold fold used to build is now composed by a caller holding both libraries: `ci/tests/resolve.nix` is that caller and the ecosystem's only site that FORCES `build` |
 | Record-layer folding (`record.foldLayersTraced`) that `cascade` calls | `gen-algebra` — "gen-algebra: pure Nix algebra — search monad, records, intensional functions, either" |
@@ -120,7 +120,7 @@ The two are declared on different surfaces and neither is derived from `compute`
 | What does the analysis read? | Exactly the `readsAttrs` list on each equation, further filtered to names that are themselves keys of `equations` — `lib/schedule.nix` `scheduleWith`, binding `edges`. `compute` is never inspected; `lib/equation.nix` states it directly: "compute is opaque -> nothing to infer" |
 | At what granularity? | Attribute NAMES only, node-agnostic: `scheduleWith` builds its accessor from `builtins.attrNames equations`, with no node dimension |
 | What does the evaluator read? | Whatever `compute` calls `self.get id attr` on, for any `id` and any `attr` that is a key of `equations` — `gen-scope`'s `eval` binding `get` dispatches on `attributes ? ${attrName}` and consults no `readsAttrs`. `git grep -c readsAttrs -- lib/` in `gen-scope` (rev `020d6e9`) matches zero files; positive control, same instrument, same run: `attributes` matches 4 files there |
-| Is the dynamic read-set recoverable? | `gen-scope`'s `recordedDeps` comment states it is only recoverable via `evalDebug`'s fresh-self-per-get, which defeats the memo, so the declared edges are the inspectable contract |
+| Is the dynamic read-set recoverable? | `gen-scope`'s `lib/eval.nix` states it is only recoverable via `evalDebug`'s fresh-self-per-get, which defeats the memo, so the graph's edge set is the inspectable contract. That library declares no read set at all — the body is the read set, and `ctx.trace.<id>.deps` derives from `ctx.accessor.edges` |
 | Which lib files carry `readsAttrs`? | 3 of 8: `lib/equation.nix`, `lib/schedule.nix`, `lib/contract.nix` (`git grep -l readsAttrs -- lib/`) |
 
 | Trap | Evidence |
