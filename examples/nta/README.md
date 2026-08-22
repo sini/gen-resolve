@@ -1,8 +1,11 @@
 # gen-resolve example — higher-order NTA (§5.2)
 
-A `cluster` node whose `derived-children` **NTA** (non-terminal attribute, Vogt
-1989 §2) spawns one `service` node per replica *mid-fold*: the node grammar grows
-during evaluation and each spawned node carries its own attributes.
+A `cluster` kind whose registered **spawn** (a non-terminal attribute, Vogt 1989
+§2) produces one `service` node per replica *mid-fold*: the node grammar grows
+during evaluation and each spawned node carries its own attributes. The expansion
+is declared on the kind it expands from — `mkKind { below = [ "service" ]; spawns.service = …; }` — so the produced kind is a registered name below its
+host's own and the descent is settled before anything fires; the builder does not
+write its child's `type`, because the substrate stamps that from the key.
 
 - **Grammar grows mid-fold** — the single declared `cluster` root resolves to
   four nodes (`cluster` + three spawned `service` nodes). The spawn is a real
@@ -18,7 +21,7 @@ during evaluation and each spawned node carries its own attributes.
 
 | library | symbols |
 | --- | --- |
-| `gen-resolve.lib` | `attr`, `nta`, `resolve`, `project` |
+| `gen-resolve.lib` | `attr`, `nta`, `resolve` |
 | `gen-scope.lib` | `buildNodes` |
 
 Every gen flake output is a single `.lib` value (the old callable

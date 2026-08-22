@@ -24,7 +24,7 @@ behaviours of the RAG schedule conductor:
 
 | library | symbols |
 | --- | --- |
-| `gen-resolve.lib` | `attr`, `reference`, `resolve`, `project`, `classKey` |
+| `gen-resolve.lib` | `attr`, `reference`, `resolve`, `classKey` |
 | `gen-memo.lib` | `warmOverride` |
 | `gen-scope.lib` | `buildNodes`, `edge`, `evalWarm`, `queryReverse` (internal to `reference`) |
 | `gen-aspects.lib` | `flatten`, `key` |

@@ -11,7 +11,6 @@ let
   inherit (genResolve)
     attr
     nta
-    project
     ;
   inherit (genScope) foldEquations;
   # THE EXPANSION IS DECLARED ON THE KIND IT EXPANDS FROM. `cluster` registers `service` in its
@@ -93,7 +92,7 @@ let
 
   allIds = lib.sort (a: b: a < b) (builtins.attrNames ctx.eval.allNodes);
   serviceIds = builtins.filter (i: i != "cluster") allIds;
-  ports = map (i: project ctx i "port") serviceIds;
+  ports = map (i: ctx.eval.facade.get i "port") serviceIds;
 
   checks = {
     grammar-grew = builtins.length allIds == 4; # cluster + 3 spawned services

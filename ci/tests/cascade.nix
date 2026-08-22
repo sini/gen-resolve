@@ -11,7 +11,6 @@ let
   inherit (genResolve)
     attr
     cascade
-    project
     _scheduleWith
     ;
   inherit (genScope) foldEquations;
@@ -79,7 +78,7 @@ in
   flake.tests.cascade = {
     # replace: most-specific layer wins per field (leaf), least-specific field survives
     test-combine-replace = {
-      expr = project ctx "leaf" "opts";
+      expr = ctx.eval.facade.get "leaf" "opts";
       expected = {
         name = "leaf";
         flags = [ "leaf" ];
@@ -87,7 +86,7 @@ in
     };
     # append: the SAME layered channel concatenates across every layer (proves combine bites)
     test-combine-append = {
-      expr = (project ctx "leaf" "tagslist").items;
+      expr = (ctx.eval.facade.get "leaf" "tagslist").items;
       expected = [
         "base"
         "mid"

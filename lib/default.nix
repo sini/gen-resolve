@@ -44,7 +44,7 @@ in
     cascade
     reference
     ;
-  inherit (contract) project edges why;
+  inherit (contract) why;
   inherit (materialize) materialize materializeAll terminalBind;
   inherit (classkey) classKey;
   # internal, `_`-prefixed — exposed for the schedule tests; not part of the public surface

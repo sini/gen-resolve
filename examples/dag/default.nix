@@ -9,7 +9,6 @@ let
   inherit (genResolve)
     attr
     cascade
-    project
     ;
   inherit (genScope) foldEquations;
   build = genResolve._buildSchedule;
@@ -72,7 +71,7 @@ let
     schedule = genResolve._scheduleWith { equations = eqs; };
     parseParent = id: roots.nodes.${id}.parent or null;
   };
-  resolved = project ctx "policy" "settings";
+  resolved = ctx.eval.facade.get "policy" "settings";
 
   # stub equations for the two schedule gates
   eq = kind: reads: stratum: {

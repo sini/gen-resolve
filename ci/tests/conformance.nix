@@ -20,7 +20,6 @@
 }:
 let
   inherit (genResolve)
-    project
     attr
     nta
     _scheduleWith
@@ -117,7 +116,7 @@ let
       ctx = ctxFor seed 0;
       ref = refStore seed 0;
     in
-    builtins.all (i: project ctx "node" (aName i) == ref.${aName i}) (range n)
+    builtins.all (i: ctx.eval.facade.get "node" (aName i) == ref.${aName i}) (range n)
   ) seeds;
 
   # (2)/(3) schedule gates — minimal stub equations
@@ -212,13 +211,13 @@ let
         if builtins.length parts > 1 then builtins.head parts else null;
   };
   # NOTE: memoization is a gen-scope internal (the `get` cache) and is NOT observable through
-  # pure-value equality — `project x == project x` is a tautology that proves nothing, so it is
+  # pure-value equality — `get x == get x` is a tautology that proves nothing, so it is
   # deliberately omitted. This exercises grammar GROWTH: a real, typed node appears mid-fold and
   # its attribute resolves through the demand fixpoint.
   ntaGrew =
     (ntaCtx.eval.allNodes ? "p-child") # grammar grew mid-fold (Vogt 1989 §2)
     && ((ntaCtx.eval.node "p-child").type == "spawned") # the spawned node is a real, typed grammar node
-    && (project ntaCtx "p-child" "val" == 6); # its attribute resolves through the fold
+    && (ntaCtx.eval.facade.get "p-child" "val" == 6); # its attribute resolves through the fold
 in
 {
   flake.tests.conformance = {

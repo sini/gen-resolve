@@ -11,7 +11,6 @@ let
   inherit (genResolve)
     attr
     reference
-    project
     _scheduleWith
     ;
   inherit (genScope) foldEquations;
@@ -69,12 +68,12 @@ in
   flake.tests.reference = {
     # forward includes: web1 dereferences db1's role
     test-includes-forward = {
-      expr = project ctx "web1" "db-role";
+      expr = ctx.eval.facade.get "web1" "db-role";
       expected = "database";
     };
     # reverse neededBy: db1 gathers its importers' tags (the delegated queryReverse)
     test-neededBy-reverse = {
-      expr = builtins.sort builtins.lessThan (project ctx "db1" "consumers");
+      expr = builtins.sort builtins.lessThan (ctx.eval.facade.get "db1" "consumers");
       expected = [
         "w1"
         "w2"
@@ -82,7 +81,7 @@ in
     };
     # a leaf importer with no importers has an empty reverse set
     test-neededBy-empty = {
-      expr = project ctx "web1" "consumers";
+      expr = ctx.eval.facade.get "web1" "consumers";
       expected = [ ];
     };
     # an invalid target is rejected at registration

@@ -19,7 +19,6 @@ let
   inherit (genResolve)
     attr
     reference
-    project
     classKey
     ;
   inherit (genScope) foldEquations;
@@ -135,17 +134,17 @@ let
       ];
     aspect-identity-key = nginxIdentity == "web/nginx";
     # cross-host read: web1 sees db1's `role` across the includes edge (Hedin reference)
-    cross-host-includes-read = project ctx "web1" "included-role" == "database";
+    cross-host-includes-read = ctx.eval.facade.get "web1" "included-role" == "database";
     # reverse read (neededBy): db1 gathers the classes of the hosts that import it
-    neededBy-reverse-read = project ctx "db1" "dependents" == [ "web" ];
+    neededBy-reverse-read = ctx.eval.facade.get "db1" "dependents" == [ "web" ];
     # override re-derives the target's cone...
-    override-reclasses-target = project ctx' "web2" "resolved-aspects" == flatKeys "db";
+    override-reclasses-target = ctx'.eval.facade.get "web2" "resolved-aspects" == flatKeys "db";
     override-collapses-to-db = classKey ctx' "web2" == classKey ctx' "db1";
     # ...and leaves every non-cone host's prior value byte-identical
     override-keeps-noncone =
-      project ctx' "web1" "resolved-aspects" == project ctx "web1" "resolved-aspects";
+      ctx'.eval.facade.get "web1" "resolved-aspects" == ctx.eval.facade.get "web1" "resolved-aspects";
     # a DECLARED cross-node read re-derives soundly: override db1.role -> web1 re-reads it
-    override-cone-rederives-consumer = project ctxRole "web1" "included-role" == "primary";
+    override-cone-rederives-consumer = ctxRole.eval.facade.get "web1" "included-role" == "primary";
   };
 in
 {

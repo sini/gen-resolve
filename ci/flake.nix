@@ -43,5 +43,12 @@
         # re-sited to gen-memo's own suite, where the construct they oracle actually lives. A
         # retiring library holding an input nothing reaches is a coupling with no reader.
       };
+      # Cells whose subject is an ABORT cannot live under `testModules`: the batch asserter behind
+      # `checks.default` quantifies over `flake.tests` and forces every `expr` unconditionally, so
+      # an aborting one crashes that gate instead of failing a cell. They get their own output, read
+      # by `nix-unit --flake ./ci#testsError`.
+      extraModules = [
+        ./tests-error.nix
+      ];
     };
 }

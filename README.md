@@ -36,9 +36,10 @@ surface:
 | `cascade { name; channel; strata?; combine?; acc? }` | `cascade` | `["imports"]` | a D>I>P strata fold over the neron-ordered import layers (Neron 2015 §2); `combine ∈ {replace, append, recursive}` unconditional, or `semilattice-set` (JSL/ACI) iff `acc = true` |
 | `reference { name; select; target? }` | `reference` | `["imports"]` | a forward reference attribute (nearest binding, Hedin 2000) or a reverse `neededBy` gather (Hedin & Magnusson 2003) |
 
-`gen-scope.foldEquations { roots; parseParent; schedule; declaredEdges?; settings? }` folds these
+`gen-scope.foldEquations { scope; parseParent; schedule; declaredDependencies; settings? }` folds these
 into a sealed context, the `schedule` being `_scheduleWith { equations = …; }` built here; read-only
-consumers (`project`, `edges`, `why`) query that context; `materialize` forces the terminal
+the consumer `why` queries that context, and a resolved value is read through the evaluator's own
+facade (`ctx.eval.facade.get id attr`); `materialize` forces the terminal
 `output-modules` attribute and binds via `gen-bind`. Intra-eval incremental re-folding is **no longer
 here** — see [The warm fold has left](#the-warm-fold-has-left).
 
@@ -100,10 +101,10 @@ let
   };
 in
 gen-scope.lib.foldEquations {
-  roots        = myScopeNodes;         # from gen-scope.buildNodes
+  scope        = myScope;              # the whole record from gen-scope.buildRoots
   schedule     = resolve._scheduleWith { equations = { /* attr/nta/cascade/reference */ }; };
-  parseParent  = id: myParent id;
-  declaredEdges = id: myEdges id;      # consumer→producer, MUST over-declare
+  parseParent  = id: myScope.nodes.${id}.parent or null;
+  declaredDependencies = id: myEdges id;  # consumer→producer, MUST over-declare; no default
 }
 ```
 
@@ -242,7 +243,7 @@ that fix landed in gen-bind alongside this library.
 
 ## The class KEY and its scope
 
-`classKey ctx id = sha256(toJSON (sanitize (project ctx id "resolved-aspects")))`, arg-shape
+`classKey ctx id = sha256(toJSON (sanitize (ctx.eval.facade.get id "resolved-aspects")))`, arg-shape
 included. Function-bearing leaves sanitize to a stable sentinel (no throw, no false collision across
 distinct non-function parts).
 
@@ -323,10 +324,10 @@ nodes that import this one (Hedin & Magnusson 2003), delegated to `gen-scope.que
 ### The cold fold and its sealed context — `gen-scope`'s
 
 ```
-gen-scope.foldEquations : { roots; parseParent; schedule; declaredEdges?; settings? } → ResolveCtx
+gen-scope.foldEquations : { scope; parseParent; schedule; declaredDependencies; settings? } → ResolveCtx
 ```
 
-Returns a sealed **10-field** `ResolveCtx = { accessor; attributes; declaredEdges; equations; eval; parseParent; roots; schedule; settings; trace }`. There is no `equations` formal — they are read off the schedule, so the seal cannot carry a schedule nobody folded — and no `strataOrder` field, which had no reader in any repository measured.
+Returns a sealed **10-field** `ResolveCtx = { accessor; attributes; declaredDependencies; equations; eval; parseParent; roots; schedule; settings; trace }`. There is no `equations` formal — they are read off the schedule, so the seal cannot carry a schedule nobody folded — and no `strataOrder` field, which had no reader in any repository measured.
 
 > **The count is measured, and the phrasing it replaces was wrong for longer than one field.** This
 > line claimed a sealed context of ten and enumerated ten. `strataOrder` was missing from it when
@@ -337,16 +338,23 @@ Returns a sealed **10-field** `ResolveCtx = { accessor; attributes; declaredEdge
 
 Folds `equations.compute` into `gen-scope.eval`; `seq`-forces the schedule the caller handed it, so a
 gate failure throws at the call and not lazily on a first read.
-`accessor.edges = declaredEdges` is the consumer→producer edge and MUST over-declare (soundness
-condition (c)). `trace.<id>.deps` is the eager recorded read-edge set.
+`accessor.dependencies` is the relation a reuse decision is taken over, and it is the normalized
+UNION of the declared half — consumer→producer, which MUST over-declare (soundness condition (c)) —
+and the structural half the substrate induces. `trace.<id>.deps` is that same list, derived from it
+at one construction site so the seal and its consumers cannot disagree.
 
 ### Consumer contract (read-only)
 
 ```
-project : ResolveCtx → id → attr → value    # = ctx.eval.get id attr (no class-content forcing)
-edges   : ResolveCtx → id → [Dep]           # = ctx.trace.<id>.deps (declared read-edges)
 why     : ResolveCtx → { id; attr } → [Dep] # NAME-only static provenance (over-approximation)
 ```
+
+★ **`project` and `edges` retired here.** `project` was `ctx.eval.get id attr` under a second
+name — the facade's own `get`, curried — so callers read `ctx.eval.facade.get id attr` and no
+successor construct was owed. `edges` was a projection of `ctx.trace.<id>.deps`, which the seal
+publishes itself; what does **not** travel with it is the `or { deps = [ ]; }` default, so an id the
+fold never saw now refuses instead of answering the empty relation. `edges` survives as this
+library's internal binding because `why` is defined over it and keeps that default.
 
 `why` returns the cross-product of declared node-edges × the attr's `readsAttrs` as `[Dep]`
 (`Dep = { id; attr }`). It is coarse — an over-approximation, not per-`(id, attr)` precise.

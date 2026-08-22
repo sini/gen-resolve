@@ -35,7 +35,7 @@ in
   classKey =
     ctx: id:
     let
-      v = ctx.eval.get id "resolved-aspects"; # default key attribute; consumer may digest another via project
+      v = ctx.eval.get id "resolved-aspects"; # default key attribute; a consumer digesting another names it at its own read
     in
     builtins.hashString "sha256" (builtins.toJSON (sanitize v)); # toJSON captures resolved arg-shape (D8)
 }

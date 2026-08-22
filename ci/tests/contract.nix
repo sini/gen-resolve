@@ -6,8 +6,6 @@
 }:
 let
   inherit (genResolve)
-    project
-    edges
     why
     _scheduleWith
     ;
@@ -63,20 +61,6 @@ let
 in
 {
   flake.tests.contract = {
-    # project == eval.get (no class-content forcing)
-    test-project = {
-      expr = project ctx "a" "plus-one";
-      expected = 2;
-    };
-    # edges == the declared read-edges (trace.<id>.deps)
-    test-edges = {
-      expr = edges ctx "a";
-      expected = [ "b" ];
-    };
-    test-edges-empty = {
-      expr = edges ctx "b";
-      expected = [ ];
-    };
     # why == NAME-only static provenance: declared node-edges x readsAttrs
     test-why = {
       expr = why ctx {
@@ -89,6 +73,21 @@ in
           attr = "self-v";
         }
       ];
+    };
+
+    # ── THE RETIREMENT'S EDIT SHAPE, ARMED ──
+    # `edges` left the export surface but stays as this module's internal binding, because `why` is
+    # defined over it and what the binding carries beyond a field read is the `or { deps = [ ]; }`
+    # default. An id the fold never saw answers the EMPTY relation here; the seal's own
+    # `trace.<id>.deps` aborts for that case instead, uncatchably. This cell is what reds if a later
+    # author reads the retirement as licence to point `why` at the successor — the migration would
+    # look clean and would hand a live export an abort it never had.
+    test-why-on-an-unknown-node-answers-empty = {
+      expr = why ctx {
+        id = "no-such-node";
+        attr = "plus-one";
+      };
+      expected = [ ];
     };
   };
 }
