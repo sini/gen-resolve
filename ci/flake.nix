@@ -3,7 +3,6 @@
     gen-harness.url = "github:sini/gen-harness";
     gen-scope.url = "github:sini/gen-scope";
     gen-graph.url = "github:sini/gen-graph";
-    gen-memo.url = "github:sini/gen-memo";
     gen-algebra.url = "github:sini/gen-algebra";
     gen-bind.url = "github:sini/gen-bind";
     # nixpkgs is the CI runner's dependency (nix-unit harness, treefmt) and supplies the
@@ -17,7 +16,6 @@
       gen-harness,
       gen-scope,
       gen-graph,
-      gen-memo,
       gen-algebra,
       gen-bind,
       ...
@@ -40,10 +38,10 @@
         genGraph = gen-graph.lib;
         genAlgebra = gen-algebra.lib;
         genBind = gen-bind.lib;
-        # The plane, reached by the suite and by no library file here: the one cell that forces
-        # `build` composes it with the evaluator's accessor at the test, which is where a caller
-        # holding both libraries composes them.
-        genMemo = gen-memo.lib;
+        # THE PLANE IS NO LONGER AN INPUT HERE. The cells that composed it with this evaluator's
+        # accessor were the only site in the ecosystem forcing `gen-memo.build`, and they have
+        # re-sited to gen-memo's own suite, where the construct they oracle actually lives. A
+        # retiring library holding an input nothing reaches is a coupling with no reader.
       };
     };
 }

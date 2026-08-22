@@ -71,16 +71,31 @@
         "gen-prelude": "gen-prelude_3"
       },
       "locked": {
-        "lastModified": 1786486136,
-        "narHash": "sha256-okz6e+6XGWFdE09irVN6u3IKarugXU+s49gncYWN7pQ=",
+        "lastModified": 1787374123,
+        "narHash": "sha256-OCtVxyq51HdiKbwKIgauLS8ch8m144yWhY+dwCOAE5E=",
         "owner": "sini",
         "repo": "gen-graph",
-        "rev": "aa9386761d5f497c85a5f4723d76867c575457bf",
+        "rev": "f71f94e571626bf9b557e86492082839e248e5e5",
         "type": "github"
       },
       "original": {
         "owner": "sini",
         "repo": "gen-graph",
+        "type": "github"
+      }
+    },
+    "gen-identity": {
+      "locked": {
+        "lastModified": 1787248094,
+        "narHash": "sha256-FfBRtY/lnemVU5WZEXRsSwjEjs3PqYCSQU7LKL6qeak=",
+        "owner": "sini",
+        "repo": "gen-identity",
+        "rev": "58c114cb76329fc5a6bb3ee0d29a34f63efc2030",
+        "type": "github"
+      },
+      "original": {
+        "owner": "sini",
+        "repo": "gen-identity",
         "type": "github"
       }
     },
@@ -135,11 +150,11 @@
     },
     "gen-prelude_3": {
       "locked": {
-        "lastModified": 1786239838,
-        "narHash": "sha256-Z+fLq4FsOaBNyrtfEwhwwOmihSFnHe+Jf47VNsW9lZQ=",
+        "lastModified": 1786595333,
+        "narHash": "sha256-9loi/kuvayA/3jM9oiCV9amCIksxO1SivXEhWnKLBLg=",
         "owner": "sini",
         "repo": "gen-prelude",
-        "rev": "da7056327e5f8312d73d51895039a1f319166cd4",
+        "rev": "57881cb5236bb3fd6be81a728e3274e4e60f754c",
         "type": "github"
       },
       "original": {
@@ -235,15 +250,16 @@
     "gen-scope": {
       "inputs": {
         "gen-graph": "gen-graph_2",
+        "gen-identity": "gen-identity",
         "gen-prelude": "gen-prelude_4",
         "gen-schema": "gen-schema"
       },
       "locked": {
-        "lastModified": 1786741123,
-        "narHash": "sha256-wfcqNt4cLXZqyhq/jzjVYPlGrlsJwgjrW6j8xG/wdZ4=",
+        "lastModified": 1787403546,
+        "narHash": "sha256-v3WDVcqUZGpY3pEXx43y629hBogwNq3LMHGUgeT5kiY=",
         "owner": "sini",
         "repo": "gen-scope",
-        "rev": "d7d042332b1edfa5113a95ef158fdf99eac1d461",
+        "rev": "82145347737d9f2917fed86fbf584f6d49484113",
         "type": "github"
       },
       "original": {

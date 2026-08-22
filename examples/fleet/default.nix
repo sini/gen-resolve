@@ -49,7 +49,10 @@ let
     meta.aspect-chain = [ "web" ];
   };
 
-  roots = genScope.buildNodes {
+  roots = genScope.buildRoots {
+    # A FLAT kind vocabulary: names, and no order between them, so no kind expands into another.
+    # This example declares types and never spawns, which is exactly what an empty `below` says.
+    kinds = genScope.mkKinds [ (genScope.mkKind { name = "host"; }) ];
     importGraph = genScope.edge "web1" "db1"; # web1 includes db1 (cross-host reference edge)
     decls = {
       web1.class = "web";
@@ -95,11 +98,12 @@ let
       target = "neededBy";
     };
   };
-  # declaredEdges MUST over-declare the cross-node reads (soundness (c)): web1 reads db1 via the
-  # includes edge, so declare web1 -> db1. This is what makes override sound across nodes.
-  declaredEdges = id: if id == "web1" then [ "db1" ] else [ ];
+  # declaredDependencies MUST over-declare the cross-node reads (soundness (c)): web1 reads db1 via
+  # the includes edge, so declare web1 -> db1. This is what makes override sound across nodes.
+  declaredDependencies = id: if id == "web1" then [ "db1" ] else [ ];
   ctx = foldEquations {
-    inherit roots declaredEdges;
+    scope = roots;
+    inherit declaredDependencies;
     schedule = genResolve._scheduleWith { equations = eqs; };
     parseParent = _: null;
   };

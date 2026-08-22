@@ -28,6 +28,9 @@ let
   inherit (genScope) foldEquations;
   build = genResolve._buildSchedule;
 
+  # A FLAT kind vocabulary: names, and no order between them, so no kind expands into another.
+  flatKinds = names: genScope.mkKinds (map (name: genScope.mkKind { inherit name; }) names);
+
   modp = a: b: a - b * (a / b);
   range = n: builtins.genList (x: x) n; # [0 .. n-1]
   aName = i: "a${toString i}";
@@ -61,7 +64,8 @@ let
     );
   rootsFor =
     v:
-    genScope.buildNodes {
+    genScope.buildRoots {
+      kinds = flatKinds [ "host" ];
       decls.node = {
         base = v;
       };
@@ -70,7 +74,10 @@ let
   ctxFor =
     seed: base:
     foldEquations {
-      roots = rootsFor base;
+      scope = rootsFor base;
+      # Stated rather than defaulted: this DAG's reads are attribute-level, declared on the
+      # equations themselves, so the node-level relation is empty and now says so.
+      declaredDependencies = _: [ ];
       schedule = _scheduleWith { equations = eqsFor seed; };
       parseParent = _: null;
     };
@@ -135,38 +142,46 @@ let
       resolved-aspects = stubEq "circular" [ ] "resolution";
     })).success;
 
-  # (4) NTA grammar-growth: derived-children spawns a node NOT in roots; its attr resolves through the fold
-  ntaRoots = genScope.buildNodes {
+  # (4) NTA grammar-growth: the spawn produces a node NOT in roots; its attr resolves through the fold.
+  #
+  # THE EXPANSION IS DECLARED ON THE KIND IT EXPANDS FROM, not written as an attribute. `host`
+  # registers `spawned` in its `below` and names the builder under that key, so the produced kind is
+  # a registered name below its host's own and the descent is settled before anything fires; a bare
+  # `derived-children` attribute is refused by name at the entry. The builder does not choose its
+  # child's kind either — the substrate stamps it from the key it was declared under, which is why
+  # no `type` field is written here.
+  ntaKinds = genScope.mkKinds [
+    (genScope.mkKind { name = "spawned"; })
+    (genScope.mkKind {
+      name = "host";
+      below = [ "spawned" ];
+      spawns.spawned =
+        ev: id:
+        let
+          node = ev.node id;
+        in
+        {
+          "${id}-child" = {
+            id = "${id}-child";
+            parent = id;
+            decls.v = (node.decls.seedN or 0) + 1;
+          };
+        };
+    })
+  ];
+  ntaRoots = genScope.buildRoots {
+    kinds = ntaKinds;
     decls.p = {
       seedN = 5;
     };
     types.p = "host";
   };
   ntaEqs = {
-    # empty `children` alongside `derived-children`: gen-scope's non-root resolveNode reads
+    # empty `children` alongside the spawn channel: gen-scope's non-root resolveNode reads
     # `get parent "children"` unconditionally (unlike the guarded _walkFrom), so it must exist.
     children = nta {
       name = "children";
       spawn = self: id: { };
-    };
-    derived-children = nta {
-      name = "derived-children";
-      spawn =
-        self: id:
-        let
-          node = self.node id;
-        in
-        if node.type == "host" then
-          {
-            "${id}-child" = {
-              id = "${id}-child";
-              type = "spawned";
-              parent = id;
-              decls.v = (node.decls.seedN or 0) + 1;
-            };
-          }
-        else
-          { };
     };
     val = attr {
       name = "val";
@@ -183,12 +198,13 @@ let
     };
   };
   ntaCtx = foldEquations {
-    roots = ntaRoots;
+    scope = ntaRoots;
+    declaredDependencies = _: [ ];
     schedule = _scheduleWith { equations = ntaEqs; };
     parseParent =
       id:
-      if ntaRoots ? ${id} then
-        (ntaRoots.${id}.parent or null)
+      if ntaRoots.nodes ? ${id} then
+        (ntaRoots.nodes.${id}.parent or null)
       else
         let
           parts = lib.splitString "-child" id;

@@ -17,7 +17,10 @@ let
   # scope hierarchy policy -> host -> env -> default: each node's PARENT is the next-broader
   # scope (default is the root ancestor, policy the most-specific leaf). The neron traversal
   # walks self -> direct imports -> up the parent chain, so the cascade collects every layer.
-  roots = genScope.buildNodes {
+  roots = genScope.buildRoots {
+    # A FLAT kind vocabulary: names, and no order between them, so no kind expands into another.
+    # This example declares types and never spawns, which is exactly what an empty `below` says.
+    kinds = genScope.mkKinds [ (genScope.mkKind { name = "host"; }) ];
     parentGraph = genScope.path [
       "policy"
       "host"
@@ -62,9 +65,12 @@ let
     };
   };
   ctx = foldEquations {
-    inherit roots;
+    scope = roots;
+    # Stated rather than defaulted: the layering here is the parent chain, which the structural
+    # half of the union already carries; no read-edge is declared at the node level.
+    declaredDependencies = _: [ ];
     schedule = genResolve._scheduleWith { equations = eqs; };
-    parseParent = id: roots.${id}.parent or null;
+    parseParent = id: roots.nodes.${id}.parent or null;
   };
   resolved = project ctx "policy" "settings";
 

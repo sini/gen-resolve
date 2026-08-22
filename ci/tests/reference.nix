@@ -15,7 +15,11 @@ let
     _scheduleWith
     ;
   inherit (genScope) foldEquations;
-  roots = genScope.buildNodes {
+  # A FLAT kind vocabulary: names, and no order between them, so no kind expands into another.
+  # This fixture declares types and never spawns, which is exactly what an empty `below` says.
+  flatKinds = names: genScope.mkKinds (map (name: genScope.mkKind { inherit name; }) names);
+  roots = genScope.buildRoots {
+    kinds = flatKinds [ "host" ];
     importGraph = genScope.overlays [
       (genScope.edge "web1" "db1")
       (genScope.edge "web2" "db1")
@@ -53,7 +57,10 @@ let
     };
   };
   ctx = foldEquations {
-    inherit roots;
+    scope = roots;
+    # Stated rather than defaulted: this fixture's edges are the IMPORT relation, which the
+    # structural half of the union already carries; it declares no read-edges of its own.
+    declaredDependencies = _: [ ];
     schedule = _scheduleWith { equations = eqs; };
     parseParent = _: null;
   };

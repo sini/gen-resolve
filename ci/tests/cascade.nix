@@ -15,8 +15,12 @@ let
     _scheduleWith
     ;
   inherit (genScope) foldEquations;
+  # A FLAT kind vocabulary: names, and no order between them, so no kind expands into another.
+  # This fixture declares types and never spawns, which is exactly what an empty `below` says.
+  flatKinds = names: genScope.mkKinds (map (name: genScope.mkKind { inherit name; }) names);
   # scope hierarchy leaf -> mid -> base (parent chain; neron walks up it)
-  roots = genScope.buildNodes {
+  roots = genScope.buildRoots {
+    kinds = flatKinds [ "host" ];
     parentGraph = genScope.path [
       "leaf"
       "mid"
@@ -63,9 +67,12 @@ let
     };
   };
   ctx = foldEquations {
-    inherit roots;
+    scope = roots;
+    # Stated rather than defaulted: this fixture declares no read-edges, and the empty relation is
+    # now something the caller says instead of something absence means.
+    declaredDependencies = _: [ ];
     schedule = _scheduleWith { equations = eqs; };
-    parseParent = id: roots.${id}.parent or null;
+    parseParent = id: roots.nodes.${id}.parent or null;
   };
 in
 {

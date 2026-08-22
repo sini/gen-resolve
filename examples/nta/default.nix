@@ -14,29 +14,23 @@ let
     project
     ;
   inherit (genScope) foldEquations;
-  roots = genScope.buildNodes {
-    decls.cluster = {
-      replicas = 3;
-      base = "svc";
-    };
-    types.cluster = "cluster";
-  };
-  eqs = {
-    # empty children alongside derived-children (gen-scope resolveNode reads `children` unconditionally)
-    children = nta {
-      name = "children";
-      spawn = self: id: { };
-    };
-    # spawn one service node per replica — the grammar grows here
-    derived-children = nta {
-      name = "derived-children";
-      spawn =
-        self: id:
-        let
-          node = self.node id;
-          n = node.decls.replicas or 0;
-        in
-        if node.type == "cluster" then
+  # THE EXPANSION IS DECLARED ON THE KIND IT EXPANDS FROM. `cluster` registers `service` in its
+  # `below` and names the builder under that key, so the produced kind is a registered name below
+  # its host's own and the descent is settled before anything fires. The builder does not choose
+  # its child's kind — the substrate stamps it from the key it was declared under — so no `type`
+  # field is written here.
+  roots = genScope.buildRoots {
+    kinds = genScope.mkKinds [
+      (genScope.mkKind { name = "service"; })
+      (genScope.mkKind {
+        name = "cluster";
+        below = [ "service" ];
+        spawns.service =
+          ev: id:
+          let
+            node = ev.node id;
+            n = node.decls.replicas or 0;
+          in
           lib.listToAttrs (
             map (
               i:
@@ -47,15 +41,25 @@ let
                 name = cid;
                 value = {
                   id = cid;
-                  type = "service";
                   parent = id;
                   decls.idx = i;
                 };
               }
             ) (lib.range 0 (n - 1))
-          )
-        else
-          { };
+          );
+      })
+    ];
+    decls.cluster = {
+      replicas = 3;
+      base = "svc";
+    };
+    types.cluster = "cluster";
+  };
+  eqs = {
+    # empty children alongside the spawn channel (gen-scope resolveNode reads `children` unconditionally)
+    children = nta {
+      name = "children";
+      spawn = self: id: { };
     };
     # a per-service attribute (each spawned node computes its own port)
     port = attr {
@@ -73,12 +77,13 @@ let
     };
   };
   ctx = foldEquations {
-    inherit roots;
+    scope = roots;
+    declaredDependencies = _: [ ];
     schedule = genResolve._scheduleWith { equations = eqs; };
     parseParent =
       id:
-      if roots ? ${id} then
-        (roots.${id}.parent or null)
+      if roots.nodes ? ${id} then
+        (roots.nodes.${id}.parent or null)
       else
         let
           parts = lib.splitString "/" id;
