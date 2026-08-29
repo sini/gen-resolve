@@ -1,8 +1,17 @@
-# THE STANDALONE ENTRY, EXERCISED. `import ../.. { }` is the non-flake path this repository
-# documents — `ci/repl.nix` builds its surface with it, and a consumer with no flake has nothing
-# else. Every OTHER cell in this suite takes `genResolve` from `ci/flake.nix`, which imports
-# `../lib` directly and so never evaluates the root shim: a shim that names a sibling's private
-# formals can therefore be wrong in every release without one cell noticing. This is that cell.
+# THE STANDALONE ENTRY, EXERCISED. The root `default.nix` is the non-flake path this repository
+# documents — `ci/repl.nix` builds its surface with `import ../. { }`, and a consumer with no flake
+# has nothing else. Every OTHER cell in this suite takes `genResolve` from `ci/flake.nix`, which
+# imports `../lib` directly and so never evaluates the root shim: a shim that names a sibling's
+# private formals can therefore be wrong in every release without one cell noticing. This is that
+# cell.
+#
+# ★★ THE CELL IS PURE, AND THE PURITY IS A CONSEQUENCE OF HOW IT IS CALLED. The shim's four
+# dependency defaults `builtins.fetchTree` the flake-locked revisions; supplying ALL FOUR explicitly
+# means those defaults are never forced, so this reaches the network not at all. What it tests is
+# the shim's SIGNATURE and its DELEGATION — which is precisely where the defect lives. The bare
+# `import ../.. { }` form does NOT have this property, and the difference is measured rather than
+# assumed: with the shim's `fetch` formal replaced by a `throw`, the bare form aborts on `gen-scope`
+# and the supplied form evaluates clean.
 #
 # One cell, one key per sibling the shim CONSTRUCTS, because each key forces exactly that one:
 #   scope — `reference`'s `compute` IS `scope.query { … }`, produced when the equation is built
@@ -10,7 +19,10 @@
 #   bind  — `terminalBind` is `bind.wrapAll`, which needs no resolution context to force
 # `algebra` is deliberately not forced. It is reached only from inside a `cascade` compute, which
 # needs a resolution context, and it is a dependency the shim takes as a bare value rather than
-# constructing — there is no arity contract there to get wrong.
+# constructing — there is no arity contract there to get wrong. It is nonetheless SUPPLIED below,
+# like the other three: an unsupplied formal is a dormant `fetchTree` waiting for the first cell
+# that reaches a `cascade`, and hermeticity that turns on which keys the expr happens to name is
+# not a property of this file.
 #
 # WHY THE KEYS FORCE VALUES. Each key is a POSITIVE assertion that the shim constructs its sibling,
 # and forcing is how a construction is observed — not a stand-in for a missing comparison. The
@@ -24,6 +36,10 @@
 # isolates the break to one poisoned cell, reported ☢️ with a non-zero exit and NO red ❌, so a
 # reading of THAT instrument which tallies only ❌ scores the break green.
 {
+  genScope,
+  genGraph,
+  genAlgebra,
+  genBind,
   lib,
   ...
 }:
@@ -39,7 +55,15 @@ let
       map (line: lib.head (lib.splitString "#" line)) (lib.splitString "\n" text)
     );
 
-  entry = import ../.. { };
+  # ★ ALL FOUR dependency formals, from the SAME bindings `ci/flake.nix` builds its `lib` output
+  # from. That is what keeps this cell offline, and it is also what makes the cell a reading of the
+  # SHIM: over two different substrate builds it would be exercising two libraries.
+  entry = import ../.. {
+    scope = genScope;
+    graph = genGraph;
+    algebra = genAlgebra;
+    bind = genBind;
+  };
   eq = kind: reads: {
     inherit kind;
     readsAttrs = reads;
@@ -78,8 +102,8 @@ in
     };
   };
 
-  # ★ THE FOUR CELLS ABOVE CANNOT SEE THIS CLASS, and the reason is the property that makes them
-  # hermetic: they supply every dependency formal explicitly, so the shim's `fetch`-backed DEFAULTS —
+  # ★ THE CELL ABOVE CANNOT SEE THIS CLASS, and the reason is the property that makes it hermetic:
+  # it supplies every dependency formal explicitly, so the shim's `fetch`-backed DEFAULTS —
   # which is where the divergence lives — are never forced. Forcing them would put `builtins.fetchTree`
   # inside the suite. This cell reads the CONSTRUCTION instead of the outcome, which is strictly wider:
   # it also catches the member that never throws (a defaulted formal on the far side turns the loud arm
