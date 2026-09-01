@@ -19,10 +19,10 @@ write its child's `type`, because the substrate stamps that from the key.
 
 ## API used (current gen libraries)
 
-| library | symbols |
-| --- | --- |
+| library           | symbols                  |
+| ----------------- | ------------------------ |
 | `gen-resolve.lib` | `attr`, `nta`, `resolve` |
-| `gen-scope.lib` | `buildNodes` |
+| `gen-scope.lib`   | `buildNodes`             |
 
 Every gen flake output is a single `.lib` value (the old callable
 `gen-X { inherit lib; }` form is obsolete).

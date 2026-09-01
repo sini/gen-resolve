@@ -22,12 +22,12 @@ behaviours of the RAG schedule conductor:
 
 ## API used (current gen libraries)
 
-| library | symbols |
-| --- | --- |
-| `gen-resolve.lib` | `attr`, `reference`, `resolve`, `classKey` |
-| `gen-memo.lib` | `warmOverride` |
-| `gen-scope.lib` | `buildNodes`, `edge`, `evalWarm`, `queryReverse` (internal to `reference`) |
-| `gen-aspects.lib` | `flatten`, `key` |
+| library           | symbols                                                                    |
+| ----------------- | -------------------------------------------------------------------------- |
+| `gen-resolve.lib` | `attr`, `reference`, `resolve`, `classKey`                                 |
+| `gen-memo.lib`    | `warmOverride`                                                             |
+| `gen-scope.lib`   | `buildNodes`, `edge`, `evalWarm`, `queryReverse` (internal to `reference`) |
+| `gen-aspects.lib` | `flatten`, `key`                                                           |
 
 Every gen flake output is a single `.lib` value (the old callable
 `gen-X { inherit lib; }` form is obsolete).

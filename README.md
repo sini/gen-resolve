@@ -29,12 +29,12 @@ gen-resolve authors a computation as a set of **semantic equations** over a scop
 them to a demand fixpoint. There are exactly four equation constructors — the *only* authoring
 surface:
 
-| constructor | kind | reads | what it is |
-|---|---|---|---|
-| `attr { name; kind; compute; readsAttrs; stratum? }` | as given | explicit | a plain semantic equation over the dependency DAG (Knuth 1968) |
-| `nta { name; spawn }` | `nta` | `[]` | a non-terminal attribute — the grammar *grows* mid-fold as new typed nodes are spawned (Vogt 1989 §2) |
-| `cascade { name; channel; strata?; combine?; acc? }` | `cascade` | `["imports"]` | a D>I>P strata fold over the neron-ordered import layers (Neron 2015 §2); `combine ∈ {replace, append, recursive}` unconditional, or `semilattice-set` (JSL/ACI) iff `acc = true` |
-| `reference { name; select; target? }` | `reference` | `["imports"]` | a forward reference attribute (nearest binding, Hedin 2000) or a reverse `neededBy` gather (Hedin & Magnusson 2003) |
+| constructor                                          | kind        | reads         | what it is                                                                                                                                                                        |
+| ---------------------------------------------------- | ----------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `attr { name; kind; compute; readsAttrs; stratum? }` | as given    | explicit      | a plain semantic equation over the dependency DAG (Knuth 1968)                                                                                                                    |
+| `nta { name; spawn }`                                | `nta`       | `[]`          | a non-terminal attribute — the grammar *grows* mid-fold as new typed nodes are spawned (Vogt 1989 §2)                                                                             |
+| `cascade { name; channel; strata?; combine?; acc? }` | `cascade`   | `["imports"]` | a D>I>P strata fold over the neron-ordered import layers (Neron 2015 §2); `combine ∈ {replace, append, recursive}` unconditional, or `semilattice-set` (JSL/ACI) iff `acc = true` |
+| `reference { name; select; target? }`                | `reference` | `["imports"]` | a forward reference attribute (nearest binding, Hedin 2000) or a reverse `neededBy` gather (Hedin & Magnusson 2003)                                                               |
 
 `gen-scope.foldEquations { scope; parseParent; schedule; declaredDependencies; settings? }` folds these
 into a sealed context, the `schedule` being `_scheduleWith { equations = …; }` built here; read-only
@@ -49,23 +49,23 @@ stores the graph and never carries domain knowledge.
 
 ## Gen Ecosystem
 
-| Library | Role |
-|---------|------|
-| [gen-prelude](https://github.com/sini/gen-prelude) | Pure nixpkgs-lib-free utility base (builtins re-exports + vendored lib utils) |
-| [gen-algebra](https://github.com/sini/gen-algebra) | Pure primitives (record, search monad, either, intensional identity) |
-| [gen-types](https://github.com/sini/gen-types) | Clean-room MIT structural type checker (leaf/poly checkers; `verify: v → null\|err`) |
-| [gen-merge](https://github.com/sini/gen-merge) | Byte-mode module merge engine (`evalModuleTree`, byte-identical to nixpkgs `lib.evalModules` over the priority subset) |
-| [gen-schema](https://github.com/sini/gen-schema) | Typed registries (kinds, instances, collections, refs); re-hosted on gen-merge |
-| [gen-aspects](https://github.com/sini/gen-aspects) | Aspect type system (traits, classification, dispatch); re-hosted on gen-merge |
-| [gen-scope](https://github.com/sini/gen-scope) | HOAG scope-graph evaluator (demand-driven, \_eval memoization, circular attributes) |
-| [gen-graph](https://github.com/sini/gen-graph) | Accessor-based graph query combinators (traversal, condensation, phaseOrder) |
-| [gen-select](https://github.com/sini/gen-select) | Selector algebra (pattern matching over graph positions) |
-| [gen-bind](https://github.com/sini/gen-bind) | Module binding (inject external args into NixOS modules) |
-| [gen-dispatch](https://github.com/sini/gen-dispatch) | Relational rule dispatch STEP (stratified groups, conflict resolution) |
-| [gen-resolve](https://github.com/sini/gen-resolve) | Demand-driven RAG evaluator over scope graphs (attribute schedule + convergence loop) |
-| [gen-memo](https://github.com/sini/gen-memo) | The incremental plane — decides reuse, never evaluates (change propagation, AFFECTED set) |
-| [gen-vars](https://github.com/sini/gen-vars) | Pure-Nix vars/secrets (den-agnostic) |
-| [gen-flake](https://github.com/sini/gen-flake) | The nixpkgs boundary — compose purely, inject resolved values, build NixOS systems (value-injection) |
+| Library                                              | Role                                                                                                                   |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| [gen-prelude](https://github.com/sini/gen-prelude)   | Pure nixpkgs-lib-free utility base (builtins re-exports + vendored lib utils)                                          |
+| [gen-algebra](https://github.com/sini/gen-algebra)   | Pure primitives (record, search monad, either, intensional identity)                                                   |
+| [gen-types](https://github.com/sini/gen-types)       | Clean-room MIT structural type checker (leaf/poly checkers; `verify: v → null\|err`)                                   |
+| [gen-merge](https://github.com/sini/gen-merge)       | Byte-mode module merge engine (`evalModuleTree`, byte-identical to nixpkgs `lib.evalModules` over the priority subset) |
+| [gen-schema](https://github.com/sini/gen-schema)     | Typed registries (kinds, instances, collections, refs); re-hosted on gen-merge                                         |
+| [gen-aspects](https://github.com/sini/gen-aspects)   | Aspect type system (traits, classification, dispatch); re-hosted on gen-merge                                          |
+| [gen-scope](https://github.com/sini/gen-scope)       | HOAG scope-graph evaluator (demand-driven, \_eval memoization, circular attributes)                                    |
+| [gen-graph](https://github.com/sini/gen-graph)       | Accessor-based graph query combinators (traversal, condensation, phaseOrder)                                           |
+| [gen-select](https://github.com/sini/gen-select)     | Selector algebra (pattern matching over graph positions)                                                               |
+| [gen-bind](https://github.com/sini/gen-bind)         | Module binding (inject external args into NixOS modules)                                                               |
+| [gen-dispatch](https://github.com/sini/gen-dispatch) | Relational rule dispatch STEP (stratified groups, conflict resolution)                                                 |
+| [gen-resolve](https://github.com/sini/gen-resolve)   | Demand-driven RAG evaluator over scope graphs (attribute schedule + convergence loop)                                  |
+| [gen-memo](https://github.com/sini/gen-memo)         | The incremental plane — decides reuse, never evaluates (change propagation, AFFECTED set)                              |
+| [gen-vars](https://github.com/sini/gen-vars)         | Pure-Nix vars/secrets (den-agnostic)                                                                                   |
+| [gen-flake](https://github.com/sini/gen-flake)       | The nixpkgs boundary — compose purely, inject resolved values, build NixOS systems (value-injection)                   |
 
 ## Usage
 
@@ -112,14 +112,14 @@ gen-scope.lib.foldEquations {
 
 Every computation is a hard-boundary delegation. gen-resolve owns only the schedule and the loop.
 
-| concern | sibling | theory |
-|---|---|---|
-| demand fixpoint (runtime order = Nix laziness) | `gen-scope` `eval` / `evalWarm` | Mokhov 2018 §4.1 |
-| attribute-dependency topology / condensation / reverse cone | `gen-graph` `condensation` / `reachableFrom` / `dependentsOf` / `coneRank` | Knuth 1968 |
-| dirtiness oracle (deferred cross-invocation layer) | `gen-memo` `build` / `affectedSet` | Mokhov 2018 rebuilder / RTD 1983 |
-| strata fold (Neron D>I>P; `cascade.combine` = the per-field strategy) | `gen-algebra` `record.foldLayersTraced` | Neron et al. 2015 §2 |
-| terminal module binding (closure-based / partial-application arg injection) | `gen-bind` `wrapAll` | Reynolds 1972 §5 environments (informed by) |
-| convergence loop (Kleene ascent over a `circular` SCC) | `gen-scope` `circular` | Sloane 2010 §2.2 |
+| concern                                                                     | sibling                                                                    | theory                                      |
+| --------------------------------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------- |
+| demand fixpoint (runtime order = Nix laziness)                              | `gen-scope` `eval` / `evalWarm`                                            | Mokhov 2018 §4.1                            |
+| attribute-dependency topology / condensation / reverse cone                 | `gen-graph` `condensation` / `reachableFrom` / `dependentsOf` / `coneRank` | Knuth 1968                                  |
+| dirtiness oracle (deferred cross-invocation layer)                          | `gen-memo` `build` / `affectedSet`                                         | Mokhov 2018 rebuilder / RTD 1983            |
+| strata fold (Neron D>I>P; `cascade.combine` = the per-field strategy)       | `gen-algebra` `record.foldLayersTraced`                                    | Neron et al. 2015 §2                        |
+| terminal module binding (closure-based / partial-application arg injection) | `gen-bind` `wrapAll`                                                       | Reynolds 1972 §5 environments (informed by) |
+| convergence loop (Kleene ascent over a `circular` SCC)                      | `gen-scope` `circular`                                                     | Sloane 2010 §2.2                            |
 
 ## The static schedule (owned) vs runtime order (delegated)
 
@@ -420,21 +420,21 @@ with the fold they are about, and `conformance`'s override property moved with t
 
 ## Theoretical Foundations
 
-| Paper | Relationship | Used for |
-|-------|-------------|----------|
-| Knuth (1968) "Semantics of Context-Free Languages" | **Implements** | The attribute-dependency schedule (`a → b` iff `b ∈ readsAttrs a`) and the circularity test that gates a cyclic SCC |
-| Vogt, Swierstra & Kuiper (1989) "Higher-Order Attribute Grammars" | **Implements** | Non-terminal attributes (`nta`) — the grammar grows mid-fold — and the HOAG well-definedness gate lifted onto Knuth's circularity test |
-| Neron, Tolmach, Visser & Wachsmuth (2015) "A Theory of Name Resolution" | Implements | The D>I>P strata fold (`cascade`) over neron-ordered import layers; parent-chain / reference resolution over scope graphs |
-| van Antwerpen et al. (2016) "A Constraint Language for Static Semantic Analysis" (Statix) | Implements | The stratified partition assert (§4.3), generalized N-way over a declared `strataOrder`; default two-stratum: a `structural` cone may not reach a `resolution` attribute (with Apt–Blair–Walker 1988 for the positive-dependency admission) |
-| Mokhov, Mitchell & Peyton Jones (2018) "Build Systems à la Carte" | **Implements** | Demand-driven runtime order (§4.1) — Nix laziness *is* the schedule; the rebuilder dimension backs the deferred cross-invocation oracle |
-| Sloane, Kats & Visser (2010) "A Pure Object-Oriented Embedding of Attribute Grammars" | Implements | The convergence loop — iterate-to-fixpoint (Kleene ascent, §2.2) over an `all-circular` SCC |
-| Reps, Teitelbaum & Demers (1983) "Incremental Context-Dependent Analysis" | Implements | The AFFECTED set; the topological reverse cone is a sound over-approximation of it |
-| Hedin (2000) "Reference Attributed Grammars" | Implements | Forward reference attributes (`reference`, nearest binding across imports) |
-| Hedin & Magnusson (2003) "JastAdd" | Informed by | Inter-type declarations — the reverse `neededBy` gather |
-| Reynolds (1972) "Definitional Interpreters for Higher-Order Programming Languages" | Informed by | Closure-based (partial-application) external-arg injection via `gen-bind.wrapAll` — Reynolds' environment binding (§5 `ENV`/`ext`); **not** defunctionalization per se (the arrow type is retained). Mirrors gen-bind's own hedge. |
-| Arntzenius & Krishnaswami (2016) "Datafun: A Functional Datalog" | Informed by | The monotone / least-fixpoint reading of the convergence ascent |
-| Radul & Sussman (2009) "The Art of the Propagator" | Informed by | Quiescence as the loop's stability criterion |
-| Acar (2002) "Self-Adjusting Computation" | Informed by | Reverse-topological splice of a change through the dependency cone |
+| Paper                                                                                     | Relationship   | Used for                                                                                                                                                                                                                                    |
+| ----------------------------------------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Knuth (1968) "Semantics of Context-Free Languages"                                        | **Implements** | The attribute-dependency schedule (`a → b` iff `b ∈ readsAttrs a`) and the circularity test that gates a cyclic SCC                                                                                                                         |
+| Vogt, Swierstra & Kuiper (1989) "Higher-Order Attribute Grammars"                         | **Implements** | Non-terminal attributes (`nta`) — the grammar grows mid-fold — and the HOAG well-definedness gate lifted onto Knuth's circularity test                                                                                                      |
+| Neron, Tolmach, Visser & Wachsmuth (2015) "A Theory of Name Resolution"                   | Implements     | The D>I>P strata fold (`cascade`) over neron-ordered import layers; parent-chain / reference resolution over scope graphs                                                                                                                   |
+| van Antwerpen et al. (2016) "A Constraint Language for Static Semantic Analysis" (Statix) | Implements     | The stratified partition assert (§4.3), generalized N-way over a declared `strataOrder`; default two-stratum: a `structural` cone may not reach a `resolution` attribute (with Apt–Blair–Walker 1988 for the positive-dependency admission) |
+| Mokhov, Mitchell & Peyton Jones (2018) "Build Systems à la Carte"                         | **Implements** | Demand-driven runtime order (§4.1) — Nix laziness *is* the schedule; the rebuilder dimension backs the deferred cross-invocation oracle                                                                                                     |
+| Sloane, Kats & Visser (2010) "A Pure Object-Oriented Embedding of Attribute Grammars"     | Implements     | The convergence loop — iterate-to-fixpoint (Kleene ascent, §2.2) over an `all-circular` SCC                                                                                                                                                 |
+| Reps, Teitelbaum & Demers (1983) "Incremental Context-Dependent Analysis"                 | Implements     | The AFFECTED set; the topological reverse cone is a sound over-approximation of it                                                                                                                                                          |
+| Hedin (2000) "Reference Attributed Grammars"                                              | Implements     | Forward reference attributes (`reference`, nearest binding across imports)                                                                                                                                                                  |
+| Hedin & Magnusson (2003) "JastAdd"                                                        | Informed by    | Inter-type declarations — the reverse `neededBy` gather                                                                                                                                                                                     |
+| Reynolds (1972) "Definitional Interpreters for Higher-Order Programming Languages"        | Informed by    | Closure-based (partial-application) external-arg injection via `gen-bind.wrapAll` — Reynolds' environment binding (§5 `ENV`/`ext`); **not** defunctionalization per se (the arrow type is retained). Mirrors gen-bind's own hedge.          |
+| Arntzenius & Krishnaswami (2016) "Datafun: A Functional Datalog"                          | Informed by    | The monotone / least-fixpoint reading of the convergence ascent                                                                                                                                                                             |
+| Radul & Sussman (2009) "The Art of the Propagator"                                        | Informed by    | Quiescence as the loop's stability criterion                                                                                                                                                                                                |
+| Acar (2002) "Self-Adjusting Computation"                                                  | Informed by    | Reverse-topological splice of a change through the dependency cone                                                                                                                                                                          |
 
 ## License
 

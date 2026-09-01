@@ -23,10 +23,10 @@ load-bearing behaviours of the RAG schedule conductor on a bare scope graph
 
 ## API used (current gen libraries)
 
-| library | symbols |
-| --- | --- |
+| library           | symbols                                        |
+| ----------------- | ---------------------------------------------- |
 | `gen-resolve.lib` | `attr`, `cascade`, `resolve`, `_buildSchedule` |
-| `gen-scope.lib` | `buildNodes`, `path` |
+| `gen-scope.lib`   | `buildNodes`, `path`                           |
 
 Every gen flake output is a single `.lib` value (the old callable
 `gen-X { inherit lib; }` form is obsolete).
