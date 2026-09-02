@@ -1,5 +1,35 @@
 # gen-resolve — demand-driven RAG evaluator over scope graphs
 
+> ## ⚠️ ORPHANED AS REFERENCE (ADR-0008 §4, 2026-09-02)
+>
+> **The library retires.** ADR-0008 §4 retires gen-resolve as a library, and it leaves on the
+> **obligation transfer** — owner-ruled 2026-09-02, *"any obligations of a retired/retiring library
+> transfer to their replacement -- if it's not relevant then the obligation dissolves and can be
+> closed"* — rather than on a completed content move. **gen-resolve is off the `gen` hub's
+> `mkGenLibs` roster**, its binding and its stratum line dropped together, and it is no longer a hub
+> flake input. **Take no new dependency on this repository.**
+>
+> Its eleven published exports are dispositioned **row by row**: nine transfer to a named roster
+> member, two dissolve by ruling.
+>
+> | Surface                                                   | Destination                                    |
+> | --------------------------------------------------------- | ---------------------------------------------- |
+> | the materialization vocabulary; the `reference` construct | [gen-view](https://github.com/sini/gen-view)   |
+> | the crossing terminal                                     | [gen-bind](https://github.com/sini/gen-bind)   |
+> | the static schedule; the seal-level queries               | [gen-scope](https://github.com/sini/gen-scope) |
+> | the reuse key                                             | [gen-memo](https://github.com/sini/gen-memo)   |
+> | `attr`, `cascade`                                         | **dissolve by ruling** — no destination        |
+>
+> The row-by-row map is `den-hoag-p3y9`; the sitting that dispositioned the exports is
+> `den-hoag-8skr`. The roster's own record of this removal is `gen/lib/mkGenLibs.nix`.
+>
+> **Why it stays readable.** The re-expression is not finished: **two of the nine still ride an open
+> successor** — `nta`, and `reference`'s `neededBy` reverse arm — and that work reads this repository
+> as its source. The repository is **orphaned for reference** under ADR-0031's F3 pattern: **no
+> content is deleted**, nothing here is maintained, and it gains no new consumers. The text below is
+> the retiring surface as it stood; it describes what this library did, not what anyone should now
+> build on.
+
 [![CI](https://github.com/sini/gen-resolve/actions/workflows/ci.yml/badge.svg)](https://github.com/sini/gen-resolve/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT) [![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-pink?logo=github)](https://github.com/sponsors/sini)
 
 Pure-Nix, `nixpkgs.lib`-free **semantic-equation vocabulary and static attribute-dependency schedule** for higher-order reference attribute grammars over algebraic scope graphs. You declare equations here and build a schedule over their declared reads; `gen-scope.foldEquations` folds them into a demand fixpoint; `materialize` forces the terminal and binds the result.
