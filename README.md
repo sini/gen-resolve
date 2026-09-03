@@ -16,9 +16,26 @@
 > | --------------------------------------------------------- | ---------------------------------------------- |
 > | the materialization vocabulary; the `reference` construct | [gen-view](https://github.com/sini/gen-view)   |
 > | the crossing terminal                                     | [gen-bind](https://github.com/sini/gen-bind)   |
-> | the static schedule; the seal-level queries               | [gen-scope](https://github.com/sini/gen-scope) |
+> | ~~the static schedule;~~ the seal-level queries           | [gen-scope](https://github.com/sini/gen-scope) |
 > | the reuse key                                             | [gen-memo](https://github.com/sini/gen-memo)   |
 > | `attr`, `cascade`                                         | **dissolve by ruling** — no destination        |
+>
+> ★★ **STRUCK 2026-09-03 — THE STATIC SCHEDULE'S DESTINATION IS NOT gen-scope.** The owner
+> **RULED** it **"the query-gate home"** (2026-08-11, `den-hoag-ui5c`, OPEN 4 candidate (a); normative
+> at engine-spec **R§5.2**), and **that referent has never been resolved to a named library** —
+> ADR-0008 §3's *"no standalone analysis library"* constrains the answer without supplying it. The
+> struck reading is kept legible because this banner published it. It is also unexecuted at the
+> substrate: `gen-scope.lib` ⇒ 89 exports, **0** matching `[Ss]chedul` (at `a73bb80`; live control in
+> the same run). The carrier resolving the referent is `den-hoag-query-gate-home-static-schedule-6poeg`.
+> The row's other half — the seal-level queries → gen-scope — is unaffected.
+>
+> ★ **AND THE CITATION BELOW IS WRONG FOR THAT ROW.** `den-hoag-8skr` is cited here as the sitting
+> that dispositioned the exports, but 8skr held the two schedule exports **OUT** of its eleven, with
+> a stated reason and a stated destination-phase: *"`_buildSchedule` + `_scheduleWith` travel with the
+> static-schedule phase (OUT per engine-spec R§1.2, waits on the query-gate home)"*. On the schedule
+> it says the **opposite** of the struck destination. The eleven it dispositioned and the eleven
+> above are **different sets of the same cardinality** — `project` and `edges` retired later and the
+> schedule internals took their places.
 >
 > The row-by-row map is `den-hoag-p3y9`; the sitting that dispositioned the exports is
 > `den-hoag-8skr`. The roster's own record of this removal is `gen/lib/mkGenLibs.nix`.
