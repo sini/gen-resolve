@@ -1,5 +1,7 @@
 # gen-resolve — agent capability sheet
 
+> **Library class: retired.** Deletion is refused by standing ruling; the repository stays readable and orphaned for reference, its obligations already transferred to named destinations.
+
 ## Scope
 
 The authoring vocabulary for semantic equations (`attr` / `nta` / `cascade` / `reference`) and the static attribute-dependency schedule built over their declared reads — the Knuth circularity test and the N-way stratum assert. Every computation is delegated to a sibling.
